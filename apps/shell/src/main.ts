@@ -11,7 +11,8 @@ import './style.css';
 import { createBridge } from './platform/bridge';
 import { gameSublabel, type Game, type HostBridge, type Settings } from './platform/types';
 import { XmbAudio } from './xmb/audio';
-import { keyBindings, InputRouter } from './xmb/input';
+import { keyBindings, InputRouter, type ControllerChange } from './xmb/input';
+import { faceGlyphs, type ControllerInfo } from './xmb/pad';
 import {
   createState,
   reduce,
@@ -37,6 +38,7 @@ class Shell {
   private wave: Wave | null = null;
   private input: InputRouter | null = null;
   private settings: Settings | null = null;
+  private controllers: ControllerInfo[] = [];
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -74,22 +76,56 @@ class Shell {
   }
 
   private bindInput(): void {
-    this.input = new InputRouter((action) => {
-      const { state, moved, effect } = reduce(this.state, action);
-      this.state = state;
+    this.input = new InputRouter(
+      (action) => {
+        const { state, moved, effect } = reduce(this.state, action);
+        this.state = state;
 
-      if (moved) {
-        this.audio.play(action === 'confirm' ? 'confirm' : action === 'back' ? 'back' : 'move');
-      } else if (effect?.type === 'blocked') {
-        this.audio.play('blocked');
-      }
+        if (moved) {
+          this.audio.play(action === 'confirm' ? 'confirm' : action === 'back' ? 'back' : 'move');
+        } else if (effect?.type === 'blocked') {
+          this.audio.play('blocked');
+        }
 
-      this.view.render(this.state);
-      if (effect) {
-        void this.runEffect(effect);
-      }
-    });
+        this.view.render(this.state);
+        if (effect) {
+          void this.runEffect(effect);
+        }
+      },
+      { onControllerChange: (change) => this.onControllerChange(change) },
+    );
     this.input.attach(window);
+    // A pad that was already paired before launch fires no connect event, so ask
+    // once at startup to get its glyphs and name right.
+    this.syncControllers();
+  }
+
+  /**
+   * Reacts to a controller being paired or removed.
+   *
+   * Pairing a pad over Bluetooth gives no feedback that the app noticed, so this
+   * says so explicitly and switches the on-screen hints to that pad's own button
+   * labels — ✕/○ for PlayStation, A/B for Xbox.
+   */
+  private onControllerChange(change: ControllerChange): void {
+    this.syncControllers();
+    this.audio.play(change.type === 'connected' ? 'confirm' : 'back');
+    this.toast(
+      change.type === 'connected'
+        ? `${change.controller.name} connected`
+        : `${change.controller.name} disconnected`,
+    );
+    // Keep the Settings entry's reading current.
+    this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
+    this.view.render(this.state);
+  }
+
+  private syncControllers(): void {
+    const controllers = this.input?.connectedControllers() ?? [];
+    this.controllers = controllers;
+    // The first pad wins the glyphs; mixing labels across pads would be worse
+    // than picking one.
+    this.view.setFaceGlyphs(faceGlyphs(controllers[0]?.faceStyle ?? 'generic'));
   }
 
   /**
@@ -223,6 +259,15 @@ class Shell {
         kind: 'action',
         icon: 'play',
       },
+      // Sits next to Emulator: both are about the hardware this shell talks to,
+      // and it is the first thing to check when a pad is not responding.
+      {
+        id: 'controller',
+        label: 'Controller',
+        sublabel: this.controllerSummary(),
+        kind: 'action',
+        icon: 'controller',
+      },
       {
         id: 'system-info',
         label: 'System Information',
@@ -235,15 +280,47 @@ class Shell {
         label: 'Controls',
         kind: 'submenu',
         icon: 'info',
-        children: keyBindings().map((binding, index) => ({
-          id: `binding-${index}`,
-          label: binding.action,
-          sublabel: binding.keys.join('   /   '),
-          kind: 'info',
-          icon: 'info',
-        })),
+        children: this.controlBindingItems(),
       },
     ];
+  }
+
+  /** Reading for the Settings entry: which pads the browser can see. */
+  private controllerSummary(): string {
+    if (this.controllers.length === 0) {
+      return 'No controller detected — connect one by USB or Bluetooth';
+    }
+    if (this.controllers.length === 1) {
+      return this.controllers[0].name;
+    }
+    return `${this.controllers[0].name} +${this.controllers.length - 1} more`;
+  }
+
+  /**
+   * Control list, labelled for whatever is connected.
+   *
+   * Showing "✕" to someone holding an Xbox pad is a small thing that reads as
+   * carelessness, so the pad's own labels are used when one is present.
+   */
+  private controlBindingItems(): XmbItem[] {
+    const glyphs = faceGlyphs(this.controllers[0]?.faceStyle ?? 'generic');
+    const padColumn = [
+      'D-pad / left stick',
+      'D-pad / left stick',
+      glyphs.confirm,
+      glyphs.back,
+    ];
+
+    return keyBindings().map((binding, index) => ({
+      id: `binding-${index}`,
+      label: binding.action,
+      sublabel:
+        this.controllers.length > 0
+          ? `${binding.keys.join(' / ')}   ·   ${padColumn[index]}`
+          : binding.keys.join('   /   '),
+      kind: 'info',
+      icon: 'info',
+    }));
   }
 
   private networkItems(): XmbItem[] {
@@ -274,6 +351,9 @@ class Shell {
         return;
       }
       this.toast(`Starting ${game.title}…`);
+      // A short buzz as the handoff to PPSSPP begins, the way a console
+      // acknowledges a launch.
+      this.input?.rumbleAll({ duration: 140, strong: 0.45, weak: 0.25 });
       try {
         await this.bridge.launchGame(game);
       } catch (error) {
@@ -316,6 +396,23 @@ class Shell {
         }
         this.settings = updated;
         await this.refreshLibrary({ announce: true });
+        break;
+      }
+
+      case 'controller': {
+        this.syncControllers();
+        if (this.controllers.length === 0) {
+          this.toast(
+            'No controller detected. Pair it, then press a button — some pads stay idle until then.',
+          );
+          break;
+        }
+        // Buzzing the pad is the clearest possible confirmation that the right
+        // device is connected and that output reaches it too.
+        this.input?.rumbleAll({ duration: 220, strong: 0.5, weak: 0.3 });
+        this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
+        this.view.render(this.state);
+        this.toast(`${this.controllers.map((c) => c.name).join(', ')} — rumble sent`);
         break;
       }
 

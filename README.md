@@ -38,7 +38,8 @@ in the XMB, and hands off to PPSSPP when you press ✕.
 | **Twelve months of colour** | A real PSP recolours its wallpaper by system month. All twelve are here. |
 | **Real metadata, no scraping** | Titles, disc IDs and 144×80 icons parsed out of ISO9660, decompressed out of CSO, or read from a PBP section table — from each game's own `PARAM.SFO` and `ICON0.PNG`. No online database, no guessing from filenames. |
 | **Console feel, pinned by tests** | No wrapping at column ends. Per-category cursor memory. Horizontal input trapped while a submenu is open. These are the details that make it read as hardware, so they're covered by tests rather than left to drift. |
-| **Pad or keyboard** | Gamepads via the standard API including the analog stick, sharing one repeat model with the arrow keys so both scroll at the same cadence. |
+| **PS5, PS4 and Xbox pads** | DualSense, DualShock 4 and Xbox controllers over USB or Bluetooth, identified by name so the hints show *that pad's* buttons — ✕/○ or A/B. Handles the awkward cases: pads reporting a non-standard mapping with Sony's raw button order, D-pads encoded as a hat axis, and deadzone hysteresis so a resting stick can't double-step. Rumble on connect and launch. |
+| **Keyboard too** | Arrow keys share one repeat model with the D-pad, so both scroll at exactly the same cadence. |
 
 ## Screenshots
 
@@ -111,12 +112,40 @@ game dumps. This ships no game data and no firmware.
 PPSSPP is found on your `PATH` or in the standard install location for your OS;
 **Settings → Emulator** reports what was found, and you can point it anywhere.
 
-| | Keyboard | Gamepad |
+| | Keyboard | Controller |
 | --- | --- | --- |
 | Change category | ← → | D-pad / left stick |
 | Move through items | ↑ ↓ | D-pad / left stick |
-| Confirm | Enter, Space, X | ✕ / A |
-| Back | Esc, Z | ○ / B |
+| Confirm | Enter, Space, X | ✕ (PlayStation) / A (Xbox) |
+| Back | Esc, Z | ○ (PlayStation) / B (Xbox) |
+
+### Controllers
+
+<img src="site/screenshots/xmb-controller.png" alt="Settings showing a connected DualSense Wireless Controller" width="620" align="right" />
+
+Connect a **DualSense**, **DualShock 4** or **Xbox** controller by USB or
+Bluetooth and it just works — no mapping step. The shell identifies the pad, names
+it under **Settings → Controller**, and relabels the on-screen hints with that
+pad's own buttons.
+
+- **Pairing over Bluetooth?** Some pads stay idle until they send something, so
+  the browser reveals them only after the first button press. If nothing shows up,
+  press a button and check **Settings → Controller** again — selecting it also
+  buzzes the pad, which confirms both directions of the connection at once.
+- **Already connected before launch?** Handled — pads paired ahead of time never
+  fire a connect event, so they're detected at startup too.
+- **Rumble** fires on connect and when a game starts, where the pad and platform
+  support it.
+
+**Once PPSSPP takes over, it uses its own controller mapping.** This shell only
+drives the XMB; if your pad needs configuring in-game, that's done in PPSSPP's
+own settings.
+
+<br clear="right" />
+
+Supported and identified by name: DualSense and DualSense Edge, DualShock 4 (both
+revisions and the USB adapter), Xbox Series X|S, Xbox One and Xbox 360. Anything
+else still works through the standard mapping — it's just labelled generically.
 
 ## Building it yourself
 

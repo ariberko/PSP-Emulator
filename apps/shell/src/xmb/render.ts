@@ -33,6 +33,7 @@ export class XmbView {
   private readonly columnStack: HTMLElement;
   private readonly backdrop: HTMLElement;
   private readonly clock: HTMLElement;
+  private readonly hints: HTMLElement;
   private lastBackground: string | null = null;
 
   constructor(root: HTMLElement) {
@@ -41,7 +42,21 @@ export class XmbView {
     this.columnStack = must(root, '.xmb-columns');
     this.backdrop = must(root, '.xmb-item-backdrop');
     this.clock = must(root, '.xmb-clock');
+    this.hints = must(root, '.xmb-hints');
     this.startClock();
+  }
+
+  /**
+   * Relabels the footer hints for the connected controller.
+   *
+   * Showing ✕/○ to someone holding an Xbox pad is the kind of detail that reads
+   * as careless, so the labels follow whatever is plugged in.
+   */
+  setFaceGlyphs(glyphs: { confirm: string; back: string }): void {
+    this.hints.innerHTML = `
+      <span><span class="xmb-hint-key">${escapeHtml(glyphs.confirm)}</span>Enter</span>
+      <span><span class="xmb-hint-key">${escapeHtml(glyphs.back)}</span>Back</span>
+    `;
   }
 
   render(state: XmbState): void {

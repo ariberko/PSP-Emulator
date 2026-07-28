@@ -21,7 +21,8 @@ export type GlyphName =
   | 'refresh'
   | 'save'
   | 'info'
-  | 'cloud';
+  | 'cloud'
+  | 'controller';
 
 const GLYPHS: Record<GlyphName, string> = {
   // Wrench crossed over a gear — the settings toolbox.
@@ -86,6 +87,13 @@ const GLYPHS: Record<GlyphName, string> = {
     <circle cx="24" cy="24" r="16" fill="none" stroke="currentColor" stroke-width="2.8"/>
     <path d="M24 21v12" stroke="currentColor" stroke-width="3.2" stroke-linecap="round"/>
     <circle cx="24" cy="15.5" r="2.2" fill="currentColor"/>
+  `,
+  // A gamepad silhouette: grips, D-pad and two face buttons.
+  controller: `
+    <path d="M15 17h18a9 9 0 0 1 8.6 6.4l2.4 8a5.5 5.5 0 0 1-10 4.4l-2.6-4.3a3 3 0 0 0-2.6-1.5h-10.6a3 3 0 0 0-2.6 1.5l-2.6 4.3a5.5 5.5 0 0 1-10-4.4l2.4-8A9 9 0 0 1 15 17Z" fill="none" stroke="currentColor" stroke-width="2.6"/>
+    <path d="M15.5 22.5v6M12.5 25.5h6" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/>
+    <circle cx="31" cy="24" r="2" fill="currentColor"/>
+    <circle cx="35.5" cy="27.5" r="2" fill="currentColor"/>
   `,
   cloud: `
     <path d="M16 34a7 7 0 0 1-.6-14 11 11 0 0 1 20.7 3A6.5 6.5 0 0 1 34 34Z" fill="none" stroke="currentColor" stroke-width="2.8"/>

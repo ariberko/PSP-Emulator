@@ -1,19 +1,29 @@
 /**
- * Input routing for keyboard and gamepad.
+ * Input routing for keyboard and controllers.
  *
  * Both sources feed one repeat model so a held D-pad and a held arrow key scroll
  * at exactly the same rate. The browser's own key-repeat is deliberately ignored:
  * its rate is an OS preference, and the XMB's cadence is part of its feel.
+ *
+ * Controller reading lives in `pad.ts`, which handles the awkward parts — pads
+ * that report a non-standard mapping, D-pads encoded as a hat axis, deadzone
+ * hysteresis — so this file only deals with edges and timing.
  */
 
+import {
+  identifyController,
+  readPad,
+  rumble,
+  type ControllerInfo,
+  type PadDirection,
+  type PadSnapshot,
+} from './pad';
 import type { XmbInput } from './model';
 
 /** Delay before a held direction starts repeating. */
 const REPEAT_DELAY_MS = 380;
 /** Interval between repeats once started. */
 const REPEAT_INTERVAL_MS = 110;
-/** How far the analog stick must move before it counts as a direction. */
-const STICK_DEADZONE = 0.55;
 
 /** Keyboard mapping. Z/X mirror the PSP's ○/✕ for players used to emulators. */
 const KEY_MAP: Record<string, XmbInput> = {
@@ -33,21 +43,6 @@ const KEY_MAP: Record<string, XmbInput> = {
   KeyZ: 'back',
 };
 
-/**
- * Standard Gamepad button indices.
- *
- * Index 0 is the bottom face button — ✕ on a DualShock, A on an Xbox pad — which
- * is confirm on a Western PSP. Index 1 is the right face button, ○/B, for back.
- */
-const PAD_BUTTON_MAP: Record<number, XmbInput> = {
-  0: 'confirm',
-  1: 'back',
-  12: 'up',
-  13: 'down',
-  14: 'left',
-  15: 'right',
-};
-
 interface HeldInput {
   /** Timestamp of the next repeat emission. */
   nextAt: number;
@@ -55,23 +50,39 @@ interface HeldInput {
   repeating: boolean;
 }
 
+export interface ControllerChange {
+  type: 'connected' | 'disconnected';
+  controller: ControllerInfo;
+  /** Everything still connected after the change. */
+  connected: ControllerInfo[];
+}
+
 export interface InputRouterOptions {
-  /** Set false to ignore gamepads, e.g. in tests. */
+  /** Set false to ignore controllers, e.g. in tests. */
   gamepad?: boolean;
+  /** Called when a controller is plugged in, paired, or removed. */
+  onControllerChange?: (change: ControllerChange) => void;
 }
 
 export class InputRouter {
   private readonly held = new Map<XmbInput, HeldInput>();
   private readonly emit: (input: XmbInput) => void;
   private readonly useGamepad: boolean;
+  private readonly onControllerChange?: (change: ControllerChange) => void;
   private frame = 0;
   private detachers: Array<() => void> = [];
-  /** Buttons that were down on the previous poll, for edge detection. */
+
+  /** Logical inputs that were down on the previous poll, for edge detection. */
   private padDown = new Set<XmbInput>();
+  /** Previous frame's stick directions, so pad.ts can apply its release threshold. */
+  private padDirections: ReadonlySet<PadDirection> = new Set();
+  /** Identification cached per gamepad index; parsing the id string every frame is waste. */
+  private identified = new Map<number, ControllerInfo>();
 
   constructor(emit: (input: XmbInput) => void, options: InputRouterOptions = {}) {
     this.emit = emit;
     this.useGamepad = options.gamepad ?? true;
+    this.onControllerChange = options.onControllerChange;
   }
 
   attach(target: Window = window): void {
@@ -99,13 +110,45 @@ export class InputRouter {
     // A window that loses focus mid-press would otherwise repeat forever.
     const onBlur = () => this.releaseAll();
 
+    const onGamepadConnected = (event: Event) => {
+      const pad = (event as GamepadEvent).gamepad;
+      const controller = identifyController(pad.id);
+      this.identified.set(pad.index, controller);
+      // A short buzz confirms the pad is actually talking to this app, which is
+      // otherwise invisible when pairing over Bluetooth.
+      rumble(pad, { duration: 120, strong: 0.4, weak: 0.25 });
+      this.onControllerChange?.({
+        type: 'connected',
+        controller,
+        connected: this.connectedControllers(),
+      });
+    };
+
+    const onGamepadDisconnected = (event: Event) => {
+      const pad = (event as GamepadEvent).gamepad;
+      const controller = this.identified.get(pad.index) ?? identifyController(pad.id);
+      this.identified.delete(pad.index);
+      // Anything the pad was holding must be let go, or it repeats forever.
+      this.releasePadInputs();
+      this.onControllerChange?.({
+        type: 'disconnected',
+        controller,
+        connected: this.connectedControllers(),
+      });
+    };
+
     target.addEventListener('keydown', onKeyDown);
     target.addEventListener('keyup', onKeyUp);
     target.addEventListener('blur', onBlur);
+    target.addEventListener('gamepadconnected', onGamepadConnected);
+    target.addEventListener('gamepaddisconnected', onGamepadDisconnected);
+
     this.detachers = [
       () => target.removeEventListener('keydown', onKeyDown),
       () => target.removeEventListener('keyup', onKeyUp),
       () => target.removeEventListener('blur', onBlur),
+      () => target.removeEventListener('gamepadconnected', onGamepadConnected),
+      () => target.removeEventListener('gamepaddisconnected', onGamepadDisconnected),
     ];
 
     const loop = () => {
@@ -138,10 +181,43 @@ export class InputRouter {
   releaseAll(): void {
     this.held.clear();
     this.padDown.clear();
+    this.padDirections = new Set();
   }
 
   /**
-   * Advances repeat timers and polls gamepads.
+   * Controllers currently visible to the browser.
+   *
+   * Read live rather than from a cache: pads that were already connected when the
+   * page loaded never fire a `gamepadconnected` event until they are touched.
+   */
+  connectedControllers(): ControllerInfo[] {
+    const pads = navigator.getGamepads?.() ?? [];
+    const out: ControllerInfo[] = [];
+    for (const pad of pads) {
+      if (!pad) {
+        continue;
+      }
+      let info = this.identified.get(pad.index);
+      if (!info) {
+        info = identifyController(pad.id);
+        this.identified.set(pad.index, info);
+      }
+      out.push(info);
+    }
+    return out;
+  }
+
+  /** Buzzes every connected pad, e.g. to acknowledge launching a game. */
+  rumbleAll(options?: { duration?: number; strong?: number; weak?: number }): void {
+    for (const pad of navigator.getGamepads?.() ?? []) {
+      if (pad) {
+        rumble(pad, options);
+      }
+    }
+  }
+
+  /**
+   * Advances repeat timers and polls controllers.
    *
    * Exposed so tests can drive time forward without a real clock.
    */
@@ -168,24 +244,32 @@ export class InputRouter {
   private pollGamepads(): void {
     const pads = navigator.getGamepads?.() ?? [];
     const nowDown = new Set<XmbInput>();
+    const directions = new Set<PadDirection>();
 
     for (const pad of pads) {
       if (!pad) {
         continue;
       }
-      for (const [index, input] of Object.entries(PAD_BUTTON_MAP)) {
-        if (pad.buttons[Number(index)]?.pressed) {
-          nowDown.add(input);
-        }
+      let info = this.identified.get(pad.index);
+      if (!info) {
+        // A pad already connected at load never fires the connect event, so
+        // identify lazily here too.
+        info = identifyController(pad.id);
+        this.identified.set(pad.index, info);
       }
-      // Many pads report the D-pad as a hat on the axes instead of buttons, and
-      // the analog stick should navigate too.
-      const [x = 0, y = 0] = pad.axes;
-      if (y <= -STICK_DEADZONE) nowDown.add('up');
-      if (y >= STICK_DEADZONE) nowDown.add('down');
-      if (x <= -STICK_DEADZONE) nowDown.add('left');
-      if (x >= STICK_DEADZONE) nowDown.add('right');
+
+      const snapshot: PadSnapshot = readPad(pad, info, this.padDirections);
+      for (const direction of snapshot.directions) {
+        directions.add(direction);
+        nowDown.add(direction);
+      }
+      if (snapshot.confirm) nowDown.add('confirm');
+      if (snapshot.back) nowDown.add('back');
     }
+
+    // Directions are tracked separately from `padDown` because hysteresis needs
+    // last frame's *stick* state specifically, not every logical input.
+    this.padDirections = directions;
 
     for (const input of nowDown) {
       if (!this.padDown.has(input)) {
@@ -198,6 +282,15 @@ export class InputRouter {
       }
     }
     this.padDown = nowDown;
+  }
+
+  /** Releases everything a controller was holding, on disconnect. */
+  private releasePadInputs(): void {
+    for (const input of this.padDown) {
+      this.release(input);
+    }
+    this.padDown.clear();
+    this.padDirections = new Set();
   }
 }
 
