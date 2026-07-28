@@ -88,6 +88,43 @@ already exists at ...`). So let the CLI generate that file — don't hand-write 
 - `base44/.app.jsonc` — just `{"id": "<app_id>"}`. Per-checkout state,
   **gitignored on purpose**.
 
+## What this repo deploys
+
+Once linked, the resources under `base44/` deploy as-is:
+
+| Path | What it is |
+| --- | --- |
+| `base44/entities/SaveState.jsonc` | Cloud save-state index (URLs and metadata, not payloads) |
+| `base44/entities/LibraryEntry.jsonc` | Game library metadata and play counts |
+| `base44/entities/Release.jsonc` | Published desktop builds, one row per platform |
+| `base44/functions/releases/` | Download-page manifest and the app's update check |
+| `base44/functions/save-sync/` | Save-state list / upload / delete |
+
+The landing page in `site/` is plain HTML with no build step, so point the site
+config at it directly. Add this to the `base44/config.jsonc` that `scaffold` or
+`create` generates:
+
+```jsonc
+"site": {
+  "outputDirectory": "./site"
+}
+```
+
+Then:
+
+```bash
+base44 entities push        # create the entities
+base44 functions deploy     # deploy the backend functions
+base44 site deploy          # publish site/ to Base44 hosting
+base44 deploy               # or do all of the above at once
+```
+
+`site/app.js` calls the releases function at `/api/functions/releases` — a
+relative path, so it resolves against whatever origin the site is served from and
+needs no build-time configuration. Until a `Release` row exists the download
+section shows an empty state pointing at GitHub Releases, rather than looking
+broken.
+
 ## Targeting an app without a link file
 
 Every command accepts an explicit app ID, which overrides both the link file and

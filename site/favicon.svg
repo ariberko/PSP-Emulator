@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <!-- A UMD disc on the XMB's July blue, matching the shell's own game glyph. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#6fbdd6"/>
+      <stop offset="100%" stop-color="#0c2c3f"/>
+    </linearGradient>
+  </defs>
+  <rect width="48" height="48" rx="9" fill="url(#bg)"/>
+  <g fill="none" stroke="#ffffff" stroke-width="3">
+    <circle cx="24" cy="24" r="13"/>
+  </g>
+  <path d="M24 11a13 13 0 0 1 11.3 6.5L24 24Z" fill="#ffffff" opacity="0.85"/>
+  <circle cx="24" cy="24" r="4.2" fill="#ffffff"/>
+</svg>

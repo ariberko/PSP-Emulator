@@ -1,0 +1,224 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PSP-Emulator — the XMB, on your desktop</title>
+    <meta
+      name="description"
+      content="A recreation of the PlayStation Portable's XMB that launches your games through PPSSPP. Reads real titles and cover art straight out of your ISO, CSO and PBP files."
+    />
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link rel="stylesheet" href="./styles.css" />
+
+    <meta property="og:title" content="PSP-Emulator — the XMB, on your desktop" />
+    <meta
+      property="og:description"
+      content="The PSP's CrossMediaBar, month-coloured wave and all, wrapped around PPSSPP."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="./screenshots/desktop-app.png" />
+  </head>
+  <body>
+    <!-- Decorative wave, matching the shell's own background. -->
+    <canvas class="backdrop" aria-hidden="true"></canvas>
+
+    <header class="nav">
+      <a class="brand" href="#top">
+        <img src="./favicon.svg" alt="" width="28" height="28" />
+        <span>PSP-Emulator</span>
+      </a>
+      <nav class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#gallery">Screenshots</a>
+        <a href="#how">How it works</a>
+        <a class="nav-cta" href="#download">Download</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-text">
+          <p class="eyebrow">Open source · Built on PPSSPP</p>
+          <h1>Your PSP library,<br /><span class="accent">in its own XMB.</span></h1>
+          <p class="lede">
+            The CrossMediaBar, rebuilt: the sliding cross, the month-coloured wave, your
+            games listed with the real titles and cover art read straight out of their
+            ISO, CSO and PBP files. Press ✕ and PPSSPP takes over.
+          </p>
+
+          <div class="cta-row">
+            <!-- Filled in by app.js from the releases function; the fallback link
+                 keeps the page useful if that call fails. -->
+            <a class="button primary" id="primary-download" href="#download">
+              <span id="primary-download-label">Download</span>
+              <small id="primary-download-meta">choose your platform</small>
+            </a>
+            <a class="button ghost" id="repo-link" href="#">View on GitHub</a>
+          </div>
+
+          <p class="fine-print">
+            Bring your own games. PSP-Emulator reads discs you already have — it ships
+            no game data and no firmware.
+          </p>
+        </div>
+
+        <div class="hero-shot">
+          <div class="shot-frame">
+            <img
+              src="./screenshots/desktop-app.png"
+              alt="The XMB shell listing games with cover art, running as a desktop app"
+              loading="eager"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section class="features" id="features">
+        <h2>Built to feel like the hardware</h2>
+        <div class="feature-grid">
+          <article class="feature">
+            <h3>The actual cross</h3>
+            <p>
+              Categories run along a horizontal line, the selected category's items down a
+              vertical one, and the selection sits where they meet — both sliding so it
+              stays pinned. Laid out in the PSP's own 480×272 space and scaled to your
+              window, so the proportions are the console's, not an approximation.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>A wave that never loops</h3>
+            <p>
+              Built from summed sines at incommensurable frequencies and composited
+              additively, so ribbons bloom where they cross and the motion never visibly
+              repeats.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>Twelve months of colour</h3>
+            <p>
+              A real PSP recolours its wallpaper by the system month. So does this — all
+              twelve, from February's pink to October's orange.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>Real metadata, no scraping</h3>
+            <p>
+              Titles, disc IDs and 144×80 icons come from each game's own PARAM.SFO and
+              ICON0.PNG — parsed out of ISO9660, decompressed out of CSO, or read from a
+              PBP's section table. No online database, no guessing from filenames.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>Pad or keyboard</h3>
+            <p>
+              Gamepads work through the standard API, including the analog stick, and share
+              one repeat model with the arrow keys so both scroll at the same cadence.
+            </p>
+          </article>
+          <article class="feature">
+            <h3>Saves that follow you</h3>
+            <p>
+              Optional cloud sync keeps one save state per slot per disc across your
+              machines, skipping any upload whose checksum has not changed.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="gallery" id="gallery">
+        <h2>Screenshots</h2>
+        <p class="section-lede">
+          All captured from the running app. Placeholder titles — the covers are generated
+          fixtures, not anyone's games.
+        </p>
+        <div class="gallery-grid">
+          <figure>
+            <img src="./screenshots/xmb-game.png" alt="Game category with cover art" loading="lazy" />
+            <figcaption>The Game category, cover art read from each disc.</figcaption>
+          </figure>
+          <figure>
+            <img src="./screenshots/xmb-settings.png" alt="Settings category" loading="lazy" />
+            <figcaption>The full category bar, with Settings selected.</figcaption>
+          </figure>
+          <figure>
+            <img src="./screenshots/xmb-submenu.png" alt="An open submenu" loading="lazy" />
+            <figcaption>A submenu slides in; the parent column recedes.</figcaption>
+          </figure>
+          <figure>
+            <img src="./screenshots/desktop-empty.png" alt="Empty library state" loading="lazy" />
+            <figcaption>First run, before a ROM folder is added.</figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="how" id="how">
+        <h2>How it fits together</h2>
+        <div class="how-grid">
+          <div class="how-card">
+            <span class="how-step">1</span>
+            <h3>The shell</h3>
+            <p>
+              A TypeScript XMB rendered in a Tauri webview. Its navigation is a pure state
+              machine, so the console's quirks — no wrapping at column ends, per-category
+              cursor memory, horizontal input trapped in submenus — are pinned by tests.
+            </p>
+          </div>
+          <div class="how-card">
+            <span class="how-step">2</span>
+            <h3>The host</h3>
+            <p>
+              Rust reads your ROM folders, parsing PARAM.SFO, PBP, ISO9660 and CSO
+              directly, and hands back titles and icons. It locates PPSSPP and spawns it
+              without a shell, so unusual paths stay safe.
+            </p>
+          </div>
+          <div class="how-card">
+            <span class="how-step">3</span>
+            <h3>The emulator</h3>
+            <p>
+              PPSSPP does the emulating — it is the mature, well-tested project for that,
+              and reimplementing an Allegrex VFPU would serve nobody. This is the shell
+              around it.
+            </p>
+          </div>
+          <div class="how-card">
+            <span class="how-step">4</span>
+            <h3>The backend</h3>
+            <p>
+              Base44 serves this page, the release manifest the app checks for updates, and
+              the save-state sync. Game data never leaves your machine.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section class="download" id="download">
+        <h2>Download</h2>
+        <p class="section-lede" id="release-version">Checking for the latest build…</p>
+        <div class="download-grid" id="download-grid">
+          <!-- Populated from the releases function. -->
+        </div>
+        <p class="requirements">
+          Requires <a href="https://www.ppsspp.org/" rel="noopener">PPSSPP</a> installed
+          separately. PSP-Emulator finds it on your <code>PATH</code> or in the usual
+          install location, and you can point it anywhere in Settings.
+        </p>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <p>
+        PSP-Emulator is free software under the GPL-2.0-or-later, the licence it inherits
+        from PPSSPP.
+      </p>
+      <p class="disclaimer">
+        Not affiliated with or endorsed by Sony Interactive Entertainment. "PSP" and
+        "PlayStation Portable" are their trademarks. All icons and artwork here are
+        original work; no Sony assets are included or redistributed.
+      </p>
+    </footer>
+
+    <script src="./app.js" type="module"></script>
+  </body>
+</html>
