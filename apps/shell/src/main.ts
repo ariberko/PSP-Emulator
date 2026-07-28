@@ -9,7 +9,13 @@
 import './style.css';
 
 import { createBridge } from './platform/bridge';
-import { gameSublabel, type Game, type HostBridge, type Settings } from './platform/types';
+import {
+  gameSublabel,
+  type Game,
+  type HostBridge,
+  type PadProfile,
+  type Settings,
+} from './platform/types';
 import { XmbAudio } from './xmb/audio';
 import { keyBindings, InputRouter, type ControllerChange } from './xmb/input';
 import { faceGlyphs, type ControllerInfo } from './xmb/pad';
@@ -39,6 +45,7 @@ class Shell {
   private input: InputRouter | null = null;
   private settings: Settings | null = null;
   private controllers: ControllerInfo[] = [];
+  private padProfile: PadProfile | null = null;
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -60,6 +67,7 @@ class Shell {
     this.audio.play('boot');
 
     await this.loadSettings();
+    await this.loadPadProfile();
     await this.refreshLibrary({ announce: false });
   }
 
@@ -116,8 +124,7 @@ class Shell {
         : `${change.controller.name} disconnected`,
     );
     // Keep the Settings entry's reading current.
-    this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
-    this.view.render(this.state);
+    this.refreshSettingsColumn();
   }
 
   private syncControllers(): void {
@@ -167,6 +174,31 @@ class Shell {
     } catch (error) {
       this.toast(`Couldn't read settings: ${message(error)}`);
     }
+  }
+
+  /**
+   * Adopts the controller mapping PPSSPP already has.
+   *
+   * If someone has remapped ✕ in PPSSPP, the XMB agreeing with the game beats the
+   * two disagreeing. Failure is silent by design: the built-in mapping already
+   * works, so a missing or unreadable controls.ini is not worth a warning.
+   */
+  private async loadPadProfile(): Promise<void> {
+    try {
+      this.padProfile = await this.bridge.padProfile();
+      this.input?.setPadOverrides(this.padProfile.buttons);
+    } catch {
+      this.padProfile = null;
+    }
+    // The Settings column was built before this resolved, so its Controller
+    // reading is stale until rebuilt.
+    this.refreshSettingsColumn();
+  }
+
+  /** Rebuilds the Settings items so their readings reflect current state. */
+  private refreshSettingsColumn(): void {
+    this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
+    this.view.render(this.state);
   }
 
   private async refreshLibrary(options: { announce: boolean }): Promise<void> {
@@ -285,15 +317,29 @@ class Shell {
     ];
   }
 
-  /** Reading for the Settings entry: which pads the browser can see. */
+  /**
+   * Reading for the Settings entry: which pads are visible, and whether PPSSPP's
+   * own mapping was picked up.
+   */
   private controllerSummary(): string {
+    const imported = this.padProfile?.buttons ?? {};
+    const bindings = Object.values(imported).reduce((sum, list) => sum + list.length, 0);
+    const suffix = bindings > 0 ? '  ·  using PPSSPP’s mapping' : '';
+
     if (this.controllers.length === 0) {
-      return 'No controller detected — connect one by USB or Bluetooth';
+      // Kept short when there is a suffix to fit alongside it; the full "connect
+      // one by USB or Bluetooth" hint is only useful when there is nothing else
+      // to report.
+      return suffix
+        ? `No controller yet${suffix}`
+        : 'No controller detected — connect one by USB or Bluetooth';
     }
-    if (this.controllers.length === 1) {
-      return this.controllers[0].name;
-    }
-    return `${this.controllers[0].name} +${this.controllers.length - 1} more`;
+
+    const name =
+      this.controllers.length === 1
+        ? this.controllers[0].name
+        : `${this.controllers[0].name} +${this.controllers.length - 1} more`;
+    return `${name}${suffix}`;
   }
 
   /**
@@ -378,8 +424,7 @@ class Shell {
         this.audio.setEnabled(enabled);
         this.settings = await this.bridge.saveSettings({ sound_enabled: enabled });
         // Rebuild so the item's sublabel reflects the new value.
-        this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
-        this.view.render(this.state);
+        this.refreshSettingsColumn();
         this.toast(`Sound effects ${enabled ? 'on' : 'off'}`);
         break;
       }
@@ -401,18 +446,28 @@ class Shell {
 
       case 'controller': {
         this.syncControllers();
+        // Re-read in case PPSSPP was configured since launch. This also rebuilds
+        // the Settings column, so the reading below is current either way.
+        await this.loadPadProfile();
+        const source = this.padProfile?.source;
+
         if (this.controllers.length === 0) {
           this.toast(
-            'No controller detected. Pair it, then press a button — some pads stay idle until then.',
+            source
+              ? `No controller detected, but PPSSPP’s mapping was read from ${source}`
+              : 'No controller detected. Pair it, then press a button — some pads stay idle until then.',
           );
           break;
+        }
+        if (source) {
+          this.toast(`Using PPSSPP’s controller mapping from ${source}`);
         }
         // Buzzing the pad is the clearest possible confirmation that the right
         // device is connected and that output reaches it too.
         this.input?.rumbleAll({ duration: 220, strong: 0.5, weak: 0.3 });
-        this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
-        this.view.render(this.state);
-        this.toast(`${this.controllers.map((c) => c.name).join(', ')} — rumble sent`);
+        if (!source) {
+          this.toast(`${this.controllers.map((c) => c.name).join(', ')} — rumble sent`);
+        }
         break;
       }
 

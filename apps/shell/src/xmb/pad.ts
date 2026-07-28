@@ -215,14 +215,28 @@ const NON_STANDARD_FACE: Partial<Record<ControllerKind, { confirm: number; back:
 const STANDARD_FACE = { confirm: 0, back: 1 };
 
 /**
+ * Extra button indices imported from PPSSPP's own `controls.ini`.
+ *
+ * Keyed by action name, matching `psp_host::PadProfile`.
+ */
+export type PadOverrides = Readonly<Record<string, readonly number[]>>;
+
+/**
  * Reads a gamepad into logical state.
  *
  * `held` is the previous frame's directions, needed for the release threshold.
+ *
+ * `overrides` carries whatever PPSSPP has configured. It is applied *in addition
+ * to* the built-in mapping, never instead of it: a config written for a different
+ * pad, or one whose keycodes this build does not recognise, must not be able to
+ * take away a button that already worked. The cost of the union is that an
+ * unbound button might still act — far better than a dead ✕.
  */
 export function readPad(
   pad: Gamepad,
   info: ControllerInfo,
   held: ReadonlySet<PadDirection> = new Set(),
+  overrides: PadOverrides = {},
 ): PadSnapshot {
   const standard = pad.mapping === 'standard';
   const face = standard ? STANDARD_FACE : NON_STANDARD_FACE[info.kind] ?? STANDARD_FACE;
@@ -235,6 +249,13 @@ export function readPad(
   if (pressed(pad, 13)) directions.add('down');
   if (pressed(pad, 14)) directions.add('left');
   if (pressed(pad, 15)) directions.add('right');
+
+  // Directions PPSSPP has bound, on top of the above.
+  for (const direction of ['up', 'down', 'left', 'right'] as const) {
+    if (anyPressed(pad, overrides[direction])) {
+      directions.add(direction);
+    }
+  }
 
   // D-pad as a hat axis. Non-standard DS4 and DualSense report it on axes[9],
   // and without this their D-pad appears completely dead.
@@ -256,9 +277,13 @@ export function readPad(
 
   return {
     directions,
-    confirm: pressed(pad, face.confirm),
-    back: pressed(pad, face.back),
+    confirm: pressed(pad, face.confirm) || anyPressed(pad, overrides.confirm),
+    back: pressed(pad, face.back) || anyPressed(pad, overrides.back),
   };
+}
+
+function anyPressed(pad: Gamepad, indices: readonly number[] | undefined): boolean {
+  return indices?.some((index) => pressed(pad, index)) ?? false;
 }
 
 function pressed(pad: Gamepad, index: number): boolean {

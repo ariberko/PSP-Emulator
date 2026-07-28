@@ -61,6 +61,19 @@ export interface EmulatorStatus {
 }
 
 /**
+ * Controller mapping imported from PPSSPP's own `controls.ini`.
+ *
+ * Mirrors `psp_host::PadProfile`. Applied on top of the shell's built-in
+ * mapping rather than replacing it — see `pad.ts`.
+ */
+export interface PadProfile {
+  /** Path the mapping was read from, for display. Null when none was found. */
+  source: string | null;
+  /** Action name (`"confirm"`, `"up"`, …) to gamepad button indices. */
+  buttons: Record<string, number[]>;
+}
+
+/**
  * Everything the shell needs from its host.
  *
  * Implemented by the Tauri bridge on the desktop and by a mock in the browser
@@ -76,6 +89,8 @@ export interface HostBridge {
   /** Opens a folder picker and adds the result to `rom_paths`. */
   addRomFolder(): Promise<Settings | null>;
   hostVersion(): Promise<string>;
+  /** PPSSPP's own controller mapping, if it has one. */
+  padProfile(): Promise<PadProfile>;
 }
 
 /** Human-readable file size, e.g. `1.4 GB`. */

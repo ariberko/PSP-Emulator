@@ -44,6 +44,7 @@ const tauriBridge: HostBridge = {
   emulatorStatus: () => invoke('emulator_status'),
   addRomFolder: () => invoke('add_rom_folder'),
   hostVersion: () => invoke('host_version'),
+  padProfile: () => invoke('pad_profile'),
 };
 
 export function createBridge(): HostBridge {

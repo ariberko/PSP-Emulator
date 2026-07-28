@@ -398,13 +398,19 @@ body {
   gap: 1px;
 }
 
+/*
+ * Widths use the room actually available: the text column starts at ~119px in
+ * stage coordinates, so 340px reaches the right edge without colliding with the
+ * footer hints. The earlier 250px silently ellipsised readings that carry real
+ * information, like which controller mapping is in use.
+ */
 .xmb-item-label {
   font-size: 11px;
   letter-spacing: 0.015em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 250px;
+  max-width: 320px;
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
 }
 
@@ -415,7 +421,7 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 250px;
+  max-width: 340px;
   /* Detail is only shown for the focused row, keeping the list uncluttered. */
   opacity: 0;
   transition: opacity 180ms ease;

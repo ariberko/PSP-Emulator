@@ -115,8 +115,10 @@
               Connect a DualSense, DualShock 4 or Xbox controller by USB or Bluetooth and it
               works with no mapping step. The pad is identified by name, the on-screen hints
               switch to its own buttons — ✕/○ or A/B — and it rumbles on connect and launch.
-              Pads reporting a non-standard mapping or a hat-axis D-pad are handled too,
-              which is where most implementations quietly break.
+              If PPSSPP already has a mapping configured, the XMB reads it and agrees with
+              the game rather than contradicting it. Pads reporting a non-standard mapping or
+              a hat-axis D-pad are handled too, which is where most implementations quietly
+              break.
             </p>
           </article>
           <article class="feature">
@@ -151,10 +153,10 @@
           <figure>
             <img
               src="./screenshots/xmb-controller.png"
-              alt="Settings showing a connected DualSense controller"
+              alt="Settings showing the Controller entry reporting PPSSPP's mapping is in use"
               loading="lazy"
             />
-            <figcaption>A DualSense, named and ready — no mapping step.</figcaption>
+            <figcaption>Pads are named on sight, and PPSSPP's own mapping is reused.</figcaption>
           </figure>
           <figure>
             <img src="./screenshots/desktop-empty.png" alt="Empty library state" loading="lazy" />

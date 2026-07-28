@@ -39,6 +39,7 @@ in the XMB, and hands off to PPSSPP when you press ✕.
 | **Real metadata, no scraping** | Titles, disc IDs and 144×80 icons parsed out of ISO9660, decompressed out of CSO, or read from a PBP section table — from each game's own `PARAM.SFO` and `ICON0.PNG`. No online database, no guessing from filenames. |
 | **Console feel, pinned by tests** | No wrapping at column ends. Per-category cursor memory. Horizontal input trapped while a submenu is open. These are the details that make it read as hardware, so they're covered by tests rather than left to drift. |
 | **PS5, PS4 and Xbox pads** | DualSense, DualShock 4 and Xbox controllers over USB or Bluetooth, identified by name so the hints show *that pad's* buttons — ✕/○ or A/B. Handles the awkward cases: pads reporting a non-standard mapping with Sony's raw button order, D-pads encoded as a hat axis, and deadzone hysteresis so a resting stick can't double-step. Rumble on connect and launch. |
+| **Reuses PPSSPP's mapping** | Reads PPSSPP's own `controls.ini` and adopts the bindings you already set there, so a remapped ✕ works in the XMB too. Applied additively, so a config for another pad can only add buttons, never remove one. |
 | **Keyboard too** | Arrow keys share one repeat model with the D-pad, so both scroll at exactly the same cadence. |
 
 ## Screenshots
@@ -121,7 +122,7 @@ PPSSPP is found on your `PATH` or in the standard install location for your OS;
 
 ### Controllers
 
-<img src="site/screenshots/xmb-controller.png" alt="Settings showing a connected DualSense Wireless Controller" width="620" align="right" />
+<img src="site/screenshots/xmb-controller.png" alt="Settings showing the Controller entry reporting that PPSSPP's mapping is in use" width="620" align="right" />
 
 Connect a **DualSense**, **DualShock 4** or **Xbox** controller by USB or
 Bluetooth and it just works — no mapping step. The shell identifies the pad, names
@@ -137,9 +138,16 @@ pad's own buttons.
 - **Rumble** fires on connect and when a game starts, where the pad and platform
   support it.
 
-**Once PPSSPP takes over, it uses its own controller mapping.** This shell only
-drives the XMB; if your pad needs configuring in-game, that's done in PPSSPP's
-own settings.
+**PPSSPP's own mapping is reused if it has one.** On startup the shell reads
+PPSSPP's `PSP/SYSTEM/controls.ini` and adopts whatever you already bound there —
+so if you've remapped ✕, the XMB agrees with the game instead of contradicting
+it. **Settings → Controller** says when a mapping was imported and from where.
+
+Imported bindings are applied *on top of* the built-in mapping, never instead of
+it. A config written for a different pad can therefore only ever add working
+buttons, not take one away.
+
+Once PPSSPP is running it handles input itself; this shell only drives the XMB.
 
 <br clear="right" />
 

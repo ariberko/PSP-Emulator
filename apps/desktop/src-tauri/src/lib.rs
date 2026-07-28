@@ -84,6 +84,12 @@ fn host_version() -> String {
     psp_host::host_version()
 }
 
+/// The controller mapping PPSSPP already has, so the XMB can agree with the game.
+#[tauri::command]
+fn pad_profile(state: State<'_, AppState>) -> psp_host::PadProfile {
+    psp_host::pad_profile(&state.store.load())
+}
+
 /// Builds and runs the desktop app.
 pub fn run() {
     tauri::Builder::default()
@@ -106,7 +112,8 @@ pub fn run() {
             emulator_status,
             launch_game,
             add_rom_folder,
-            host_version
+            host_version,
+            pad_profile
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the PSP-Emulator shell");

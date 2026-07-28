@@ -10,7 +10,14 @@
  * is demo furniture, not a claim to ship anyone's content.
  */
 
-import type { EmulatorStatus, Game, HostBridge, LibraryScan, Settings } from './types';
+import type {
+  EmulatorStatus,
+  Game,
+  HostBridge,
+  LibraryScan,
+  PadProfile,
+  Settings,
+} from './types';
 
 /**
  * Generates 144×80 cover art as an inline SVG data URL — the same dimensions as
@@ -129,6 +136,12 @@ export function mockBridge(): HostBridge {
 
     async hostVersion(): Promise<string> {
       return 'web demo';
+    },
+
+    async padProfile(): Promise<PadProfile> {
+      // No filesystem in the browser, so there is no controls.ini to read. The
+      // shell's built-in mapping covers this case on its own.
+      return { source: null, buttons: {} };
     },
   };
 }
