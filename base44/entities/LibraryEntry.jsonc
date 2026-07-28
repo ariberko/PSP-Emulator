@@ -1,0 +1,48 @@
+// A game the user has, recorded so the library survives a reinstall and so the
+// XMB can show play counts.
+//
+// Only metadata is stored — disc ID, title, cover art — never game data. The
+// entity is an index of what the user owns, not a copy of it.
+{
+  "name": "LibraryEntry",
+  "type": "object",
+  "properties": {
+    "disc_id": {
+      "type": "string",
+      "description": "PSP disc ID, e.g. UCUS98618. The natural key for a title."
+    },
+    "title": {
+      "type": "string",
+      "description": "Display title from PARAM.SFO."
+    },
+    "format": {
+      "type": "string",
+      "enum": ["iso", "cso", "pbp", "elf"],
+      "description": "Container the local copy is stored in."
+    },
+    "icon_url": {
+      "type": "string",
+      "description": "Uploaded ICON0.PNG, so the web library shows real cover art."
+    },
+    "size_bytes": { "type": "number" },
+    "system_version": {
+      "type": "string",
+      "description": "Minimum firmware the title declares, e.g. 6.60."
+    },
+    "play_count": {
+      "type": "number",
+      "default": 0,
+      "description": "Times launched from the XMB."
+    },
+    "total_play_seconds": {
+      "type": "number",
+      "default": 0,
+      "description": "Accumulated play time, for a 'most played' list."
+    },
+    "last_played_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": ["disc_id", "title"]
+}

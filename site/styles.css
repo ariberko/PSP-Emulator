@@ -1,0 +1,483 @@
+/*
+ * Landing page styling.
+ *
+ * Borrows the shell's palette so the site and the app look like one thing: the
+ * XMB's July blues, the same soft glows, the same restraint with borders.
+ * Deliberately dark-only — the product is a console shell, and a light variant
+ * would fight the screenshots it exists to show.
+ */
+
+:root {
+  --bg: #071a26;
+  --bg-raised: rgba(255, 255, 255, 0.045);
+  --bg-raised-hover: rgba(255, 255, 255, 0.075);
+  --edge: rgba(255, 255, 255, 0.1);
+  --edge-strong: rgba(255, 255, 255, 0.2);
+
+  --text: #eaf5fa;
+  --text-muted: #a9c4d2;
+  --text-faint: #7d9aaa;
+
+  --accent: #7fd0e6;
+  --accent-strong: #a8e4f7;
+  --accent-deep: #2f7c9b;
+
+  --radius: 14px;
+  --radius-sm: 9px;
+  --max-width: 1140px;
+
+  --font: 'Segoe UI', -apple-system, BlinkMacSystemFont, Inter, system-ui, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 16px;
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  overflow-x: hidden;
+}
+
+/* The wave sits behind everything and never intercepts input. */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* A vertical wash so content stays legible over the wave. */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: linear-gradient(
+    to bottom,
+    rgba(7, 26, 38, 0.35) 0%,
+    rgba(7, 26, 38, 0.72) 45%,
+    rgba(7, 26, 38, 0.94) 100%
+  );
+}
+
+.nav,
+main,
+.footer {
+  position: relative;
+  z-index: 2;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--accent-strong);
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.18;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5em;
+}
+
+h2 {
+  font-size: clamp(1.6rem, 3.4vw, 2.35rem);
+  text-align: center;
+}
+
+section {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: clamp(3.5rem, 8vw, 6.5rem) clamp(1.25rem, 4vw, 2rem);
+}
+
+.section-lede {
+  max-width: 62ch;
+  margin: 0 auto 2.75rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+/* --- Nav ------------------------------------------------------------------ */
+
+.nav {
+  position: sticky;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.9rem clamp(1.25rem, 4vw, 2rem);
+  background: rgba(7, 26, 38, 0.78);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--edge);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--text);
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: clamp(0.9rem, 2.4vw, 1.75rem);
+  font-size: 0.94rem;
+}
+
+.nav-links a {
+  color: var(--text-muted);
+}
+
+.nav-links a:hover {
+  color: var(--text);
+}
+
+.nav-cta {
+  padding: 0.4rem 0.95rem;
+  border: 1px solid var(--edge-strong);
+  border-radius: 999px;
+  color: var(--text) !important;
+}
+
+.nav-cta:hover {
+  background: var(--bg-raised-hover);
+  border-color: var(--accent);
+}
+
+/* Links crowd the brand on small screens and are all reachable by scrolling. */
+@media (max-width: 620px) {
+  .nav-links a:not(.nav-cta) {
+    display: none;
+  }
+}
+
+/* --- Hero ----------------------------------------------------------------- */
+
+.hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.05fr);
+  gap: clamp(2rem, 5vw, 4rem);
+  align-items: center;
+  padding-top: clamp(2.5rem, 6vw, 4.5rem);
+}
+
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* Capped below the column width so "Your PSP library," stays on one line. */
+.hero h1 {
+  font-size: clamp(2rem, 4.4vw, 3.05rem);
+  font-weight: 700;
+}
+
+.accent {
+  color: var(--accent);
+}
+
+.lede {
+  max-width: 52ch;
+  margin: 0 0 2rem;
+  font-size: clamp(1rem, 1.35vw, 1.12rem);
+  color: var(--text-muted);
+}
+
+.cta-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-bottom: 1.5rem;
+}
+
+.button {
+  display: inline-flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.7rem 1.5rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  font-weight: 600;
+  transition: transform 140ms ease, background 160ms ease, border-color 160ms ease;
+}
+
+.button small {
+  font-size: 0.76rem;
+  font-weight: 450;
+  opacity: 0.78;
+}
+
+.button:hover {
+  transform: translateY(-1px);
+}
+
+.primary {
+  background: linear-gradient(140deg, var(--accent) 0%, var(--accent-deep) 100%);
+  color: #04212f !important;
+}
+
+.primary:hover {
+  background: linear-gradient(140deg, var(--accent-strong) 0%, var(--accent-deep) 100%);
+}
+
+.ghost {
+  justify-content: center;
+  border-color: var(--edge-strong);
+  color: var(--text) !important;
+  background: var(--bg-raised);
+}
+
+.ghost:hover {
+  background: var(--bg-raised-hover);
+  border-color: var(--accent);
+}
+
+.fine-print {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--text-faint);
+}
+
+/*
+ * The screenshots already include their own black letterbox, so the frame adds
+ * only a soft edge and glow rather than another visible border.
+ */
+.shot-frame {
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 80px rgba(127, 208, 230, 0.09);
+}
+
+.shot-frame img,
+.gallery figure img {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+/* --- Features ------------------------------------------------------------- */
+
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(272px, 1fr));
+  gap: 1.15rem;
+  margin-top: 2.5rem;
+}
+
+.feature {
+  padding: 1.5rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.feature:hover {
+  background: var(--bg-raised-hover);
+  border-color: var(--edge-strong);
+}
+
+.feature h3 {
+  font-size: 1.06rem;
+  color: var(--accent);
+}
+
+.feature p {
+  margin: 0;
+  font-size: 0.94rem;
+  color: var(--text-muted);
+}
+
+/* --- Gallery -------------------------------------------------------------- */
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+  gap: 1.4rem;
+}
+
+.gallery figure {
+  margin: 0;
+}
+
+.gallery figure img {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--edge);
+}
+
+.gallery figcaption {
+  margin-top: 0.65rem;
+  font-size: 0.86rem;
+  color: var(--text-faint);
+}
+
+/* --- How it works --------------------------------------------------------- */
+
+.how-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(258px, 1fr));
+  gap: 1.15rem;
+  margin-top: 2.5rem;
+}
+
+.how-card {
+  position: relative;
+  padding: 1.5rem;
+  border-left: 2px solid var(--accent-deep);
+  background: linear-gradient(100deg, rgba(127, 208, 230, 0.07), transparent 70%);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+
+.how-step {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  margin-bottom: 0.75rem;
+  border-radius: 50%;
+  background: var(--accent-deep);
+  color: var(--text);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.how-card h3 {
+  font-size: 1.02rem;
+}
+
+.how-card p {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-muted);
+}
+
+/* --- Download ------------------------------------------------------------- */
+
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 1.25rem;
+  background: var(--bg-raised);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius);
+  color: var(--text) !important;
+  transition: background 160ms ease, border-color 160ms ease, transform 140ms ease;
+}
+
+.download-card:hover {
+  background: var(--bg-raised-hover);
+  border-color: var(--accent);
+  transform: translateY(-2px);
+}
+
+.download-card .platform {
+  font-weight: 650;
+}
+
+.download-card .meta {
+  font-size: 0.82rem;
+  color: var(--text-faint);
+}
+
+/* Shown when the release list is empty or unreachable. */
+.download-empty {
+  grid-column: 1 / -1;
+  padding: 1.75rem;
+  text-align: center;
+  border: 1px dashed var(--edge-strong);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+}
+
+.requirements {
+  max-width: 62ch;
+  margin: 0 auto;
+  text-align: center;
+  font-size: 0.9rem;
+  color: var(--text-faint);
+}
+
+code {
+  padding: 0.1em 0.4em;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+/* --- Footer --------------------------------------------------------------- */
+
+.footer {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 2.5rem clamp(1.25rem, 4vw, 2rem) 3.5rem;
+  border-top: 1px solid var(--edge);
+  font-size: 0.86rem;
+  color: var(--text-faint);
+  text-align: center;
+}
+
+.footer p {
+  margin: 0 0 0.6rem;
+}
+
+.disclaimer {
+  max-width: 74ch;
+  margin: 0 auto;
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  .backdrop {
+    display: none;
+  }
+
+  .button:hover,
+  .download-card:hover {
+    transform: none;
+  }
+}

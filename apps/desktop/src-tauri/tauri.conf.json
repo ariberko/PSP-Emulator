@@ -1,0 +1,49 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "PSP-Emulator",
+  "version": "0.1.0",
+  "identifier": "dev.psp-emulator.shell",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../../shell run dev",
+    "beforeBuildCommand": "npm --prefix ../../shell run build",
+    "devUrl": "http://localhost:5173",
+    "frontendDist": "../../shell/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "PSP-Emulator",
+        "width": 960,
+        "height": 544,
+        "minWidth": 480,
+        "minHeight": 272,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "decorations": true,
+        "theme": "Dark"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; media-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["deb", "appimage", "nsis", "dmg"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "shortDescription": "A PSP XMB shell for PPSSPP",
+    "longDescription": "PSP-Emulator wraps PPSSPP in a recreation of the PlayStation Portable's XMB, complete with the month-coloured wave background, the cross-media-bar layout and cover art read straight out of your ISO, CSO and PBP files.",
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    }
+  }
+}

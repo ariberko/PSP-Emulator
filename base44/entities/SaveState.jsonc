@@ -1,0 +1,54 @@
+// A single save state, synced between a user's machines.
+//
+// The state's binary payload is not stored here — save states run to megabytes,
+// which is the wrong shape for an entity row. Instead the desktop app uploads the
+// file and keeps the returned URL, so this entity stays a small, queryable index.
+//
+// Base44 scopes rows to the creating user by default, which is what cloud saves
+// need: nobody should read anyone else's.
+{
+  "name": "SaveState",
+  "type": "object",
+  "properties": {
+    "disc_id": {
+      "type": "string",
+      "description": "PSP disc ID the state belongs to, e.g. UCUS98618. Read from PARAM.SFO."
+    },
+    "game_title": {
+      "type": "string",
+      "description": "Display title at the time of upload, so the UI can list states without a local copy of the game."
+    },
+    "slot": {
+      "type": "number",
+      "description": "PPSSPP save slot (0-4).",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "file_url": {
+      "type": "string",
+      "description": "Uploaded .ppst payload, returned by the upload integration."
+    },
+    "screenshot_url": {
+      "type": "string",
+      "description": "Optional .jpg PPSSPP writes alongside the state."
+    },
+    "size_bytes": {
+      "type": "number",
+      "description": "Payload size, shown in the UI and used to spot a truncated upload."
+    },
+    "checksum": {
+      "type": "string",
+      "description": "SHA-256 of the payload. Lets a client skip re-uploading an unchanged state and detect corruption."
+    },
+    "device_name": {
+      "type": "string",
+      "description": "Which machine uploaded this, so a conflict can be described in terms the user recognises."
+    },
+    "captured_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When the state was saved on the device. Distinct from the row's creation date, which is when it reached the server."
+    }
+  },
+  "required": ["disc_id", "slot", "file_url", "checksum", "captured_at"]
+}

@@ -1,0 +1,52 @@
+// A published desktop build.
+//
+// Rows are written by the release pipeline, then read by two clients: the
+// download page, which shows the newest build per platform, and the desktop app's
+// update check.
+//
+// The binaries themselves live in GitHub Releases — Base44 hosting serves a site
+// and functions, not large platform artifacts — so each row carries a URL rather
+// than a payload.
+{
+  "name": "Release",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Semver, e.g. 0.2.1. Compared against the running app's version."
+    },
+    "platform": {
+      "type": "string",
+      "enum": ["windows", "macos-intel", "macos-arm", "linux-appimage", "linux-deb"],
+      "description": "One row per platform artifact for a given version."
+    },
+    "download_url": {
+      "type": "string",
+      "description": "Direct link to the artifact in GitHub Releases."
+    },
+    "size_bytes": { "type": "number" },
+    "sha256": {
+      "type": "string",
+      "description": "Digest of the artifact, so a download can be verified."
+    },
+    "release_notes": {
+      "type": "string",
+      "description": "Markdown shown on the download page and in the update prompt."
+    },
+    "published_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "prerelease": {
+      "type": "boolean",
+      "default": false,
+      "description": "Hidden from the default download page; opt-in only."
+    },
+    "yanked": {
+      "type": "boolean",
+      "default": false,
+      "description": "Pulled after publishing. Never offered as an update, and hidden from downloads."
+    }
+  },
+  "required": ["version", "platform", "download_url", "published_at"]
+}
