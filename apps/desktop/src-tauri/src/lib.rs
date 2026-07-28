@@ -136,6 +136,12 @@ fn host_version() -> String {
     psp_host::host_version()
 }
 
+/// PPSSPP's save states, the local half of cloud sync.
+#[tauri::command]
+fn save_states(state: State<'_, AppState>) -> psp_host::SaveStateScan {
+    psp_host::save_states(&state.store.load())
+}
+
 /// The controller mapping PPSSPP already has, so the XMB can agree with the game.
 #[tauri::command]
 fn pad_profile(state: State<'_, AppState>) -> psp_host::PadProfile {
@@ -167,7 +173,8 @@ pub fn run() {
             add_rom_folder,
             add_media_folder,
             host_version,
-            pad_profile
+            pad_profile,
+            save_states
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the PSP-Emulator shell");

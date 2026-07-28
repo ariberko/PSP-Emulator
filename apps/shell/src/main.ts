@@ -16,6 +16,7 @@ import {
   type MediaItem,
   type MediaScan,
   type PadProfile,
+  type SaveStateScan,
   type Settings,
 } from './platform/types';
 import { mediaSublabel, MediaSurface } from './xmb/media';
@@ -50,6 +51,7 @@ class Shell {
   private settings: Settings | null = null;
   private controllers: ControllerInfo[] = [];
   private padProfile: PadProfile | null = null;
+  private saveStates: SaveStateScan | null = null;
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -235,6 +237,35 @@ class Shell {
   private refreshSettingsColumn(): void {
     this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
     this.view.render(this.state);
+  }
+
+  /**
+   * Finds PPSSPP's save states.
+   *
+   * Read on demand rather than at startup: hashing every state costs real I/O,
+   * and nothing needs the result until Cloud Saves is opened.
+   */
+  private async loadSaveStates(): Promise<void> {
+    try {
+      this.saveStates = await this.bridge.saveStates();
+    } catch {
+      this.saveStates = null;
+    }
+    this.state = replaceCategoryItems(this.state, 'network', this.networkItems());
+    this.view.render(this.state);
+  }
+
+  /** Reading for the Cloud Saves entry. */
+  private saveStateSummary(): string {
+    const scan = this.saveStates;
+    if (!scan) {
+      return 'Sync save states with your Base44 account';
+    }
+    if (scan.states.length === 0) {
+      return 'No save states found on this machine';
+    }
+    const games = new Set(scan.states.map((s) => s.disc_id)).size;
+    return `${scan.states.length} state${scan.states.length === 1 ? '' : 's'} · ${games} game${games === 1 ? '' : 's'}`;
   }
 
   /** Rescans media folders and refills the Photo, Music and Video categories. */
@@ -476,7 +507,7 @@ class Shell {
       {
         id: 'cloud-saves',
         label: 'Cloud Saves',
-        sublabel: 'Sync save states with your Base44 account',
+        sublabel: this.saveStateSummary(),
         kind: 'action',
         icon: 'cloud',
       },
@@ -612,10 +643,28 @@ class Shell {
         break;
       }
 
-      case 'cloud-saves':
+      case 'cloud-saves': {
+        await this.loadSaveStates();
+        const scan = this.saveStates;
+        if (!scan || scan.states.length === 0) {
+          this.toast(
+            'No PPSSPP save states found yet — play a game and save, then check back',
+          );
+          break;
+        }
+        // Uploading needs the Base44 backend; until then, report exactly what was
+        // found rather than implying the sync already happened.
+        const games = new Set(scan.states.map((s) => s.disc_id)).size;
+        this.toast(
+          `${scan.states.length} save state${scan.states.length === 1 ? '' : 's'} across ` +
+            `${games} game${games === 1 ? '' : 's'} ready to sync — sign in to Base44 to upload`,
+        );
+        break;
+      }
+
       case 'check-updates':
         // Wired to the Base44 backend; see base44/functions.
-        this.toast('Sign in to Base44 to use this');
+        this.toast('Sign in to Base44 to check for updates');
         break;
     }
   }

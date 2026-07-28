@@ -18,6 +18,7 @@ import type {
   MediaItem,
   MediaScan,
   PadProfile,
+  SaveStateScan,
   Settings,
 } from './types';
 
@@ -97,6 +98,7 @@ function demoGames(): Game[] {
 export function mockBridge(): HostBridge {
   let settings: Settings = {
     rom_paths: ['(demo library)'],
+    media_paths: ['(demo photos)'],
     ppsspp_path: null,
     fullscreen: true,
     sound_enabled: true,
@@ -156,6 +158,11 @@ export function mockBridge(): HostBridge {
 
     async addMediaFolder(): Promise<Settings | null> {
       return null;
+    },
+
+    async saveStates(): Promise<SaveStateScan> {
+      // No PPSSPP install in the browser, so there are no states to find.
+      return { states: [], source: null };
     },
 
     mediaUrl(item: MediaItem): string | null {

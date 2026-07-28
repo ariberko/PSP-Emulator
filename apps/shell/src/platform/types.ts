@@ -42,6 +42,8 @@ export interface LibraryScan {
 export interface Settings {
   /** Folders scanned for games. */
   rom_paths: string[];
+  /** Folders scanned for photos, music and video. */
+  media_paths: string[];
   /** Explicit PPSSPP binary path; null means "search the usual places". */
   ppsspp_path: string | null;
   /** Launch PPSSPP already in fullscreen. */
@@ -57,6 +59,24 @@ export interface EmulatorStatus {
   path: string | null;
   version: string | null;
   /** Where it was found: an explicit setting, PATH, or a known install location. */
+  source: string | null;
+}
+
+/** Mirrors `psp_host::SaveState`. */
+export interface SaveState {
+  disc_id: string;
+  disc_version: string | null;
+  slot: number;
+  path: string;
+  screenshot: string | null;
+  size_bytes: number;
+  checksum: string;
+  modified_ms: number | null;
+}
+
+/** Mirrors `psp_host::SaveStateScan`. */
+export interface SaveStateScan {
+  states: SaveState[];
   source: string | null;
 }
 
@@ -122,6 +142,8 @@ export interface HostBridge {
    * rather than crossing IPC; in the browser there is no local file to serve.
    */
   mediaUrl(item: MediaItem): string | null;
+  /** PPSSPP's save states on this machine. */
+  saveStates(): Promise<SaveStateScan>;
 }
 
 /** Human-readable file size, e.g. `1.4 GB`. */

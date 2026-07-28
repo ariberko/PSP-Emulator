@@ -52,6 +52,7 @@ const tauriBridge: HostBridge = {
   // The Rust side widens the asset-protocol scope to the configured folders, so
   // this URL streams the file straight into an <img>, <audio> or <video>.
   mediaUrl: (item) => convertFileSrc(item.path),
+  saveStates: () => invoke('save_states'),
 };
 
 export function createBridge(): HostBridge {
