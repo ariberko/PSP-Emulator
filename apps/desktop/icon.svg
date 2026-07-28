@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <!--
+    Source artwork for the desktop app icon. `npm run icons` rasterises this and
+    generates the platform icon set into src-tauri/icons.
+
+    A UMD disc over the XMB's wave, in the shell's July palette. Original artwork
+    rather than any Sony mark.
+  -->
+  <defs>
+    <linearGradient id="backdrop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#7fd0e6"/>
+      <stop offset="52%" stop-color="#2f7c9b"/>
+      <stop offset="100%" stop-color="#08202f"/>
+    </linearGradient>
+    <radialGradient id="halo" cx="0.5" cy="0.46" r="0.5">
+      <stop offset="0%" stop-color="#c8ecf7" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#c8ecf7" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="disc" x1="0.1" y1="0" x2="0.9" y2="1">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#bcdcea"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1024" height="1024" rx="180" fill="url(#backdrop)"/>
+  <circle cx="512" cy="470" r="380" fill="url(#halo)"/>
+
+  <!-- Wave ribbons, echoing the shell's animated background. -->
+  <g fill="#d8f0fa">
+    <path d="M0 620c150-58 260 34 410-10s250-96 400-44 214 26 214 26v90c-120-34-230 8-350 34s-260-4-380-34-180 6-294 44Z" opacity="0.26"/>
+    <path d="M0 690c170-40 280 44 430 8s230-84 380-40 214 22 214 22v120H0Z" opacity="0.18"/>
+  </g>
+
+  <!-- UMD disc. -->
+  <circle cx="512" cy="452" r="216" fill="none" stroke="url(#disc)" stroke-width="42"/>
+  <path d="M512 236a216 216 0 0 1 187 108L512 452Z" fill="url(#disc)" opacity="0.9"/>
+  <circle cx="512" cy="452" r="70" fill="url(#disc)"/>
+  <circle cx="512" cy="452" r="30" fill="#12435c"/>
+</svg>

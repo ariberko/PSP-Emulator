@@ -1,0 +1,17 @@
+{
+  "name": "@psp-emulator/desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tauri desktop app wrapping the XMB shell around PPSSPP.",
+  "scripts": {
+    "dev": "tauri dev",
+    "build": "tauri build",
+    "icons": "node scripts/render-icon.mjs && tauri icon icon.png",
+    "tauri": "tauri"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.0.0",
+    "playwright": "^1.49.0"
+  }
+}

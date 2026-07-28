@@ -1,9 +1,10 @@
 [workspace]
 resolver = "2"
-members = ["crates/psp-metadata"]
-# The Tauri app needs system webkit2gtk to build. `cargo test -p psp-metadata`
-# works without it, so CI tests the core crate separately from the desktop bundle.
-default-members = ["crates/psp-metadata"]
+members = ["crates/psp-metadata", "crates/psp-host", "apps/desktop/src-tauri"]
+# The Tauri crate needs system webkit2gtk to build, so it is excluded from the
+# default set. `cargo test` therefore exercises all the logic that matters on any
+# machine, and only bundling the desktop app requires the system libraries.
+default-members = ["crates/psp-metadata", "crates/psp-host"]
 
 [workspace.package]
 version = "0.1.0"

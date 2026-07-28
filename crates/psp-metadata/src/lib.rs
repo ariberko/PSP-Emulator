@@ -32,6 +32,8 @@ pub mod sfo;
 
 #[cfg(any(test, feature = "testkit"))]
 pub mod testkit;
+#[cfg(any(test, feature = "testkit"))]
+pub mod testkit_png;
 
 pub use cso::CsoReader;
 pub use game::{Game, GameFormat};

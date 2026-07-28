@@ -19,3 +19,9 @@ tempfile = "3"
 [features]
 # Exposes the synthetic-fixture builders to downstream crates and integration tests.
 testkit = []
+
+[[example]]
+name = "make-fixtures"
+# The builders it uses only exist behind the feature, so declare the requirement
+# rather than letting a plain `cargo build --all-targets` fail on it.
+required-features = ["testkit"]
