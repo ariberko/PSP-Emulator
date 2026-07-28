@@ -36,3 +36,5 @@ base44/.types/
 target/
 dist/
 .cargo-ok
+node_modules/
+apps/shell/dist/

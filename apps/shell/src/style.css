@@ -1,0 +1,573 @@
+/*
+ * XMB styling.
+ *
+ * Authored entirely in PSP logical pixels: the stage is exactly 480×272 and a
+ * single `scale()` on it fills the window. Because the scale is a transform,
+ * text is rasterised at its final size and stays sharp — the layout keeps the
+ * console's proportions without the whole UI turning into a blurry upscale.
+ *
+ * Colours come from custom properties that theme.ts rewrites each month, so the
+ * palette shifts the way a real PSP's does.
+ */
+
+:root {
+  /* Overwritten at runtime by applyTheme(); these are July's values. */
+  --xmb-backdrop-top: #6fbdd6;
+  --xmb-backdrop-mid: #2f7c9b;
+  --xmb-backdrop-bottom: #0c2c3f;
+  --xmb-wave: #c8ecf7;
+  --xmb-glow: #a8e4f7;
+
+  /* The cross: where the category row and the item column meet. */
+  --cross-x: 84px;
+  /* Category row sits above centre; the item list needs the space below it. */
+  --cross-y: 86px;
+  --category-spacing: 72px;
+  --item-spacing: 40px;
+  /*
+   * Wide enough for a 144×80 cover scaled to 28px tall (50.4px). Undersizing this
+   * lets the artwork spill over and clip the first letter of every label.
+   */
+  --item-icon-width: 52px;
+  /* Top of the item viewport, clear of the category row and its label. */
+  --column-top: 118px;
+
+  --text-bright: #ffffff;
+  --text-dim: rgba(255, 255, 255, 0.62);
+  --text-faint: rgba(255, 255, 255, 0.34);
+  /*
+   * Unselected category icons. Brighter than --text-faint: the whole bar should
+   * stay readable at a glance, since it is how you know what else is there.
+   */
+  --category-idle: rgba(255, 255, 255, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden;
+  /*
+   * The PSP's own typeface is proprietary. A tight, slightly condensed grotesk
+   * with the same letter-spacing sits closest to it.
+   */
+  font-family: 'Segoe UI', 'Helvetica Neue', Inter, system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--text-bright);
+  user-select: none;
+}
+
+/* --- Stage ---------------------------------------------------------------- */
+
+/*
+ * Centres the 480×272 stage and letterboxes it. The scale factor is set by
+ * main.ts on resize rather than with a viewport unit so it can be snapped to
+ * whole-ish values and stay pixel-stable.
+ */
+.stage-frame {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #000;
+}
+
+.stage {
+  position: relative;
+  width: 480px;
+  height: 272px;
+  overflow: hidden;
+  transform: scale(var(--stage-scale, 1));
+  transform-origin: center center;
+  background: linear-gradient(
+    to bottom,
+    var(--xmb-backdrop-top) 0%,
+    var(--xmb-backdrop-mid) 52%,
+    var(--xmb-backdrop-bottom) 100%
+  );
+  /* Long transition so a month change or theme switch eases rather than snaps. */
+  transition: background 600ms ease;
+}
+
+/* --- Background layers ---------------------------------------------------- */
+
+.xmb-wave {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+/*
+ * A selected game's PIC1. Held well back with low opacity and a dark overlay so
+ * the bar and labels stay legible over whatever artwork a game ships.
+ */
+.xmb-item-backdrop {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  background-position: center;
+  opacity: 0;
+  transition: opacity 420ms ease;
+  pointer-events: none;
+}
+
+.xmb-item-backdrop.is-visible {
+  opacity: 0.28;
+}
+
+.xmb-item-backdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.1), rgba(0, 0, 0, 0.55));
+}
+
+/* --- Status bar ----------------------------------------------------------- */
+
+.xmb-status {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  letter-spacing: 0.04em;
+  color: var(--text-bright);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+  z-index: 3;
+}
+
+.xmb-battery-shell {
+  position: relative;
+  display: inline-block;
+  width: 17px;
+  height: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 1.5px;
+}
+
+/* The battery's positive terminal nub. */
+.xmb-battery-shell::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  right: -3px;
+  width: 2px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 0 1px 1px 0;
+}
+
+.xmb-battery-fill {
+  position: absolute;
+  inset: 1.5px;
+  width: 70%;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 1px;
+}
+
+/* --- The cross ------------------------------------------------------------ */
+
+.xmb-cross {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+}
+
+/*
+ * Category row. Translating the whole row keeps the selected category pinned to
+ * the cross while the others slide past it.
+ */
+.xmb-categories {
+  position: absolute;
+  /* The 40px icon is centred on the cross line, with its label just beneath. */
+  top: calc(var(--cross-y) - 20px);
+  /* Half a slot left, so the selected category's centre lands on --cross-x. */
+  left: calc(var(--cross-x) - var(--category-spacing) / 2);
+  display: flex;
+  align-items: flex-start;
+  transform: translateX(calc(-1 * var(--category-index, 0) * var(--category-spacing)));
+  transition: transform 260ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  opacity: 1;
+}
+
+/* Dimmed while a submenu has focus. */
+.xmb-categories.is-recessed {
+  opacity: 0.45;
+}
+
+.xmb-category {
+  position: relative;
+  flex: 0 0 var(--category-spacing);
+  width: var(--category-spacing);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  color: var(--category-idle);
+  transition: color 200ms ease, transform 240ms ease;
+  transform: scale(0.82);
+}
+
+.xmb-category.is-selected {
+  color: var(--text-bright);
+  transform: scale(1);
+}
+
+.xmb-category-icon {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.5));
+}
+
+/* Halo behind the active category — the XMB's soft bloom. */
+.xmb-category.is-selected .xmb-category-icon::before {
+  content: '';
+  position: absolute;
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--xmb-glow) 0%, transparent 68%);
+  opacity: 0.5;
+  z-index: -1;
+}
+
+.xmb-glyph {
+  width: 34px;
+  height: 34px;
+}
+
+.xmb-category-label {
+  margin-top: 2px;
+  font-size: 8px;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 200ms ease;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+}
+
+/* Only the active category is named, exactly as on hardware. */
+.xmb-category.is-selected .xmb-category-label {
+  opacity: 1;
+}
+
+/* --- Item columns --------------------------------------------------------- */
+
+/*
+ * The item viewport is fixed on screen and carries the fade mask, while the
+ * column inside it slides. The mask has to live on the untransformed parent:
+ * put it on the column and it travels with the scroll, so it would always fade
+ * the list's first entries instead of whatever is currently passing the bar.
+ */
+.xmb-columns {
+  position: absolute;
+  top: var(--column-top);
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    rgba(0, 0, 0, 0.45) 14px,
+    #000 34px,
+    #000 118px,
+    transparent 152px
+  );
+  -webkit-mask-image: linear-gradient(
+    to bottom,
+    transparent 0px,
+    rgba(0, 0, 0, 0.45) 14px,
+    #000 34px,
+    #000 118px,
+    transparent 152px
+  );
+}
+
+.xmb-column {
+  position: absolute;
+  top: 0;
+  /* Icon box centred on --cross-x, so the selection sits under its category. */
+  left: calc(var(--cross-x) - var(--item-icon-width) / 2);
+  width: 400px;
+  /* +12px leaves the previous item half-visible, sliding under the bar. */
+  transform: translateY(calc(12px - var(--cursor, 0) * var(--item-spacing)));
+  transition: transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1), opacity 220ms ease;
+}
+
+/*
+ * Parent columns slide left and recede as a submenu takes focus. The offsets are
+ * generous enough that the receded labels sit clear of the active column rather
+ * than showing through behind its icons.
+ */
+.xmb-column.is-parent {
+  opacity: 0.26;
+  transform: translateY(calc(12px - var(--cursor, 0) * var(--item-spacing)))
+    translateX(-46px);
+}
+
+.xmb-column.is-active {
+  transform: translateY(calc(12px - var(--cursor, 0) * var(--item-spacing)))
+    translateX(calc(var(--level, 0) * 58px));
+}
+
+.xmb-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: var(--item-spacing);
+  padding-right: 12px;
+  color: var(--text-dim);
+  transition: color 180ms ease, transform 180ms ease;
+}
+
+.xmb-item.is-selected {
+  color: var(--text-bright);
+  /* Nudged right so the selection reads as lifted out of the column. */
+  transform: translateX(6px);
+}
+
+.xmb-item.is-disabled {
+  color: var(--text-faint);
+}
+
+.xmb-item-icon {
+  position: relative;
+  flex: 0 0 var(--item-icon-width);
+  width: var(--item-icon-width);
+  height: 34px;
+  display: grid;
+  place-items: center;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55));
+  transition: transform 180ms ease;
+}
+
+.xmb-item.is-selected .xmb-item-icon {
+  transform: scale(1.16);
+}
+
+/* Glow behind the selected entry's icon. */
+.xmb-item.is-selected .xmb-item-icon::before {
+  content: '';
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--xmb-glow) 0%, transparent 70%);
+  opacity: 0.42;
+  z-index: -1;
+}
+
+.xmb-glyph--item {
+  width: 28px;
+  height: 28px;
+}
+
+/*
+ * Game covers are 144×80 on hardware. Constrain by height and let width follow so
+ * the real aspect survives, with a hard edge like a UMD's label.
+ */
+.xmb-icon-image {
+  height: 28px;
+  width: auto;
+  max-width: 50px;
+  object-fit: cover;
+  border-radius: 1px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
+}
+
+.xmb-item.has-cover.is-selected .xmb-icon-image {
+  box-shadow: 0 0 8px var(--xmb-glow), 0 1px 4px rgba(0, 0, 0, 0.7);
+}
+
+.xmb-item-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 1px;
+}
+
+.xmb-item-label {
+  font-size: 11px;
+  letter-spacing: 0.015em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+
+.xmb-item-sublabel {
+  font-size: 8px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  /* Detail is only shown for the focused row, keeping the list uncluttered. */
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.xmb-item.is-selected .xmb-item-sublabel {
+  opacity: 1;
+}
+
+.xmb-item-chevron {
+  margin-left: auto;
+  font-size: 13px;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.xmb-item.is-selected .xmb-item-chevron {
+  opacity: 0.7;
+}
+
+.xmb-item.is-empty {
+  color: var(--text-faint);
+}
+
+/* --- Boot sequence -------------------------------------------------------- */
+
+/*
+ * Stands in for the hardware's power-on animation: a light sweep across the
+ * middle of the screen resolving into the wave, then a fade to the XMB.
+ */
+.boot {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  background: #000;
+  display: grid;
+  place-items: center;
+  animation: boot-fade 2200ms ease forwards;
+}
+
+/* Sized to the window, not the stage: the overlay sits outside the scaled stage. */
+.boot-sweep {
+  width: min(70vw, 900px);
+  height: 2px;
+  background: linear-gradient(
+    to right,
+    transparent 0%,
+    var(--xmb-wave) 28%,
+    #fff 50%,
+    var(--xmb-wave) 72%,
+    transparent 100%
+  );
+  transform: scaleX(0);
+  filter: blur(0.4px);
+  animation: boot-sweep 1500ms cubic-bezier(0.22, 0.61, 0.36, 1) forwards;
+}
+
+@keyframes boot-sweep {
+  0% {
+    transform: scaleX(0);
+    opacity: 0;
+  }
+  22% {
+    opacity: 1;
+  }
+  60% {
+    transform: scaleX(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1) scaleY(26);
+    opacity: 0;
+  }
+}
+
+@keyframes boot-fade {
+  0%,
+  62% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* --- Footer hints --------------------------------------------------------- */
+
+.xmb-hints {
+  position: absolute;
+  bottom: 6px;
+  right: 9px;
+  display: flex;
+  gap: 10px;
+  font-size: 8px;
+  color: var(--text-dim);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  z-index: 3;
+}
+
+.xmb-hint-key {
+  display: inline-grid;
+  place-items: center;
+  width: 11px;
+  height: 11px;
+  margin-right: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 50%;
+  font-size: 7px;
+  line-height: 1;
+}
+
+/* --- Toast --------------------------------------------------------------- */
+
+/* Transient status: a launch starting, a scan finishing, an error. */
+.xmb-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 26px;
+  transform: translateX(-50%) translateY(8px);
+  padding: 5px 12px;
+  max-width: 380px;
+  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 9px;
+  letter-spacing: 0.02em;
+  text-align: center;
+  opacity: 0;
+  transition: opacity 220ms ease, transform 220ms ease;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.xmb-toast.is-visible {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* Respect a reduced-motion preference: keep the layout, drop the movement. */
+@media (prefers-reduced-motion: reduce) {
+  .xmb-categories,
+  .xmb-column,
+  .xmb-item,
+  .xmb-item-icon,
+  .xmb-item-backdrop,
+  .stage {
+    transition-duration: 1ms;
+  }
+
+  .boot,
+  .boot-sweep {
+    animation-duration: 1ms;
+  }
+}
