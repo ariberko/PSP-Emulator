@@ -228,14 +228,25 @@ docs/BASE44.md           Base44 CLI and deployment guide
 
 ## Status
 
-Working today: the XMB shell, library scanning across all four formats, PPSSPP
-discovery and launching on all three platforms, settings persistence, the Base44
-entity and function definitions, and the download site.
+**Working today:** the XMB shell; library scanning across ISO, CSO, PBP and ELF;
+PPSSPP discovery and launching on all three platforms; DualSense, DualShock 4 and
+Xbox controllers, reusing PPSSPP's own mapping if it has one; the Photo, Music and
+Video categories with a viewer and player; save-state discovery; the Base44 entity
+and function definitions; the download site; and a release pipeline that builds
+and publishes installers on a version tag.
 
-Not built yet: the release pipeline that populates `Release` rows, and the client
-half of save-state sync — the backend accepts states, but the desktop app does not
-upload them yet. The Photo, Music and Video categories are present and empty, as
-placeholders.
+**Not finished:** the desktop app does not yet *upload* save states — discovery,
+hashing and change detection are done and tested, the transport is not. Nothing
+has been deployed to Base44 yet either; the resources are ready and
+[`docs/BASE44.md`](docs/BASE44.md) has the commands.
+
+**Verification.** 134 Rust tests and 83 shell tests, with `clippy -D warnings`
+and a Tauri compile in CI. Beyond the unit tests, the desktop app was built and
+driven under Xvfb to confirm the things tests cannot: cover art extracted from
+real ISO/CSO files, photos and audio playing from disk, PPSSPP's `controls.ini`
+being adopted, and save states being found and counted. No physical controller was
+available, so pad support is verified against synthetic gamepads rather than
+hardware.
 
 ## Licence
 
