@@ -1,0 +1,21 @@
+[package]
+name = "psp-metadata"
+description = "Reads PSP game metadata out of ISO, CSO, PBP and EBOOT files"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+serde = { workspace = true }
+serde_json = { workspace = true }
+# Pure-Rust inflate. CSO blocks are raw deflate streams, and a pure-Rust
+# decoder keeps cross-compiling the desktop app free of a zlib dependency.
+miniz_oxide = "0.8"
+
+[dev-dependencies]
+tempfile = "3"
+
+[features]
+# Exposes the synthetic-fixture builders to downstream crates and integration tests.
+testkit = []

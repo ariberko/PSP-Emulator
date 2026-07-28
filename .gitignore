@@ -33,3 +33,6 @@ auth.json
 # .app.jsonc holds the app ID that links this checkout to a Base44 app.
 base44/.app.json*
 base44/.types/
+target/
+dist/
+.cargo-ok
