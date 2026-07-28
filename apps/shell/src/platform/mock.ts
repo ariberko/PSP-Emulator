@@ -15,6 +15,8 @@ import type {
   Game,
   HostBridge,
   LibraryScan,
+  MediaItem,
+  MediaScan,
   PadProfile,
   Settings,
 } from './types';
@@ -143,7 +145,43 @@ export function mockBridge(): HostBridge {
       // shell's built-in mapping covers this case on its own.
       return { source: null, buttons: {} };
     },
+
+    async scanMedia(): Promise<MediaScan> {
+      await delay(120);
+      // Photos are generated inline so the browser demo has a working Photo
+      // category. Music and video cannot be fabricated usefully, so they stay
+      // empty rather than listing entries that fail when selected.
+      return { photos: demoPhotos(), music: [], videos: [], missing_roots: [] };
+    },
+
+    async addMediaFolder(): Promise<Settings | null> {
+      return null;
+    },
+
+    mediaUrl(item: MediaItem): string | null {
+      // Demo photos carry their own data URL as the path.
+      return item.path.startsWith('data:') ? item.path : null;
+    },
   };
+}
+
+/** 480×272 gradients standing in for photos, so the viewer can be tried out. */
+function demoPhotos(): MediaItem[] {
+  const specs: Array<[string, string, string]> = [
+    ['Harbour at dusk', '#2f6f9b', '#0d2233'],
+    ['Cherry blossom', '#e2a8bd', '#5a2a3c'],
+    ['Desert road', '#d9995a', '#3d1f08'],
+    ['Pine forest', '#3f8250', '#0f2b1a'],
+  ];
+
+  return specs.map(([title, from, to]) => ({
+    id: title,
+    title,
+    path: backdropArt(from, to),
+    kind: 'photo' as const,
+    size_bytes: 0,
+    extension: 'svg',
+  }));
 }
 
 function delay(ms: number): Promise<void> {

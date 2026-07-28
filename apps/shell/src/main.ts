@@ -13,9 +13,12 @@ import {
   gameSublabel,
   type Game,
   type HostBridge,
+  type MediaItem,
+  type MediaScan,
   type PadProfile,
   type Settings,
 } from './platform/types';
+import { mediaSublabel, MediaSurface } from './xmb/media';
 import { XmbAudio } from './xmb/audio';
 import { keyBindings, InputRouter, type ControllerChange } from './xmb/input';
 import { faceGlyphs, type ControllerInfo } from './xmb/pad';
@@ -39,6 +42,7 @@ class Shell {
   private readonly bridge: HostBridge;
   private readonly view: XmbView;
   private readonly audio = new XmbAudio();
+  private readonly media: MediaSurface;
   private readonly stage: HTMLElement;
   private state: XmbState;
   private wave: Wave | null = null;
@@ -52,6 +56,9 @@ class Shell {
     this.bridge = createBridge();
     this.stage = root;
     this.view = new XmbView(root);
+    this.media = new MediaSurface(root, {
+      onError: (text) => this.toast(text),
+    });
     this.state = createState(this.buildCategories([]), INITIAL_CATEGORY);
   }
 
@@ -69,6 +76,7 @@ class Shell {
     await this.loadSettings();
     await this.loadPadProfile();
     await this.refreshLibrary({ announce: false });
+    await this.refreshMedia({ announce: false });
   }
 
   // --- Wiring ------------------------------------------------------------
@@ -86,6 +94,13 @@ class Shell {
   private bindInput(): void {
     this.input = new InputRouter(
       (action) => {
+        // A photo or video surface owns input while it is up, so the cursor does
+        // not move behind it.
+        if (this.media.isOpen) {
+          this.handleMediaInput(action);
+          return;
+        }
+
         const { state, moved, effect } = reduce(this.state, action);
         this.state = state;
 
@@ -106,6 +121,27 @@ class Shell {
     // A pad that was already paired before launch fires no connect event, so ask
     // once at startup to get its glyphs and name right.
     this.syncControllers();
+  }
+
+  /**
+   * Input while a photo or video fills the screen.
+   *
+   * Only ○ and ✕ do anything: directions are swallowed rather than moving a
+   * cursor the user cannot see.
+   */
+  private handleMediaInput(action: 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'): void {
+    if (action === 'back') {
+      this.audio.play('back');
+      this.media.closeOverlay();
+      return;
+    }
+    if (action === 'confirm') {
+      const state = this.media.togglePlayback();
+      // A photo has nothing to toggle, so ✕ leaving it open is correct.
+      if (state !== 'idle') {
+        this.audio.play('confirm');
+      }
+    }
   }
 
   /**
@@ -201,6 +237,33 @@ class Shell {
     this.view.render(this.state);
   }
 
+  /** Rescans media folders and refills the Photo, Music and Video categories. */
+  private async refreshMedia(options: { announce: boolean }): Promise<void> {
+    let scan: MediaScan;
+    try {
+      scan = await this.bridge.scanMedia();
+    } catch (error) {
+      this.toast(`Media scan failed: ${message(error)}`);
+      return;
+    }
+
+    this.state = replaceCategoryItems(this.state, 'photo', this.mediaItems(scan.photos, 'photo'));
+    this.state = replaceCategoryItems(this.state, 'music', this.mediaItems(scan.music, 'music'));
+    this.state = replaceCategoryItems(this.state, 'video', this.mediaItems(scan.videos, 'video'));
+    this.view.render(this.state);
+
+    if (scan.missing_roots.length > 0) {
+      this.toast(`Media folder not found: ${scan.missing_roots[0]}`);
+    } else if (options.announce) {
+      const total = scan.photos.length + scan.music.length + scan.videos.length;
+      this.toast(
+        total === 0
+          ? 'No media found in those folders'
+          : `${total} media file${total === 1 ? '' : 's'} found`,
+      );
+    }
+  }
+
   private async refreshLibrary(options: { announce: boolean }): Promise<void> {
     try {
       const scan = await this.bridge.scanLibrary();
@@ -228,9 +291,9 @@ class Shell {
         glyph: 'settings',
         items: this.settingsItems(),
       },
-      { id: 'photo', label: 'Photo', glyph: 'photo', items: [placeholder('No photos')] },
-      { id: 'music', label: 'Music', glyph: 'music', items: [placeholder('No music')] },
-      { id: 'video', label: 'Video', glyph: 'video', items: [placeholder('No videos')] },
+      { id: 'photo', label: 'Photo', glyph: 'photo', items: this.mediaItems([], 'photo') },
+      { id: 'music', label: 'Music', glyph: 'music', items: this.mediaItems([], 'music') },
+      { id: 'video', label: 'Video', glyph: 'video', items: this.mediaItems([], 'video') },
       { id: 'game', label: 'Game', glyph: 'game', items: this.gameItems(games) },
       { id: 'network', label: 'Network', glyph: 'network', items: this.networkItems() },
     ];
@@ -266,6 +329,45 @@ class Shell {
     });
 
     return items;
+  }
+
+  /**
+   * Items for one media category.
+   *
+   * The empty state names the category so the hint is actionable rather than a
+   * generic "nothing here".
+   */
+  private mediaItems(items: MediaItem[], kind: 'photo' | 'music' | 'video'): XmbItem[] {
+    const glyph = kind === 'photo' ? 'photo' : kind === 'music' ? 'music' : 'video';
+    const list: XmbItem[] = items.map((item) => ({
+      id: item.path,
+      label: item.title,
+      sublabel: mediaSublabel(item),
+      kind: 'action',
+      icon: glyph,
+      payload: item,
+    }));
+
+    if (list.length === 0) {
+      const noun = kind === 'photo' ? 'photos' : kind === 'music' ? 'music' : 'videos';
+      list.push({
+        id: `no-${kind}`,
+        label: `No ${noun} found`,
+        sublabel: 'Add a media folder in Settings',
+        kind: 'info',
+        icon: glyph,
+      });
+    }
+
+    list.push({
+      id: 'add-media-folder',
+      label: 'Add Media Folder',
+      sublabel: 'Choose where your photos, music and video live',
+      kind: 'action',
+      icon: 'folder',
+    });
+
+    return list;
   }
 
   private settingsItems(): XmbItem[] {
@@ -413,6 +515,14 @@ class Shell {
       return;
     }
 
+    // Media items are identified by their payload rather than a fixed id, since
+    // their ids are file paths.
+    const media = effect.item.payload as MediaItem | undefined;
+    if (media && effect.item.id !== 'add-media-folder') {
+      this.openMedia(media);
+      return;
+    }
+
     switch (effect.item.id) {
       case 'refresh-library':
         this.toast('Scanning…');
@@ -426,6 +536,21 @@ class Shell {
         // Rebuild so the item's sublabel reflects the new value.
         this.refreshSettingsColumn();
         this.toast(`Sound effects ${enabled ? 'on' : 'off'}`);
+        break;
+      }
+
+      case 'add-media-folder': {
+        const updated = await this.bridge.addMediaFolder();
+        if (!updated) {
+          this.toast(
+            this.bridge.kind === 'browser'
+              ? 'Folder picking needs the desktop app'
+              : 'No folder chosen',
+          );
+          break;
+        }
+        this.settings = updated;
+        await this.refreshMedia({ announce: true });
         break;
       }
 
@@ -495,6 +620,34 @@ class Shell {
     }
   }
 
+  /** Opens a photo, or starts a track or video. */
+  private openMedia(item: MediaItem): void {
+    const url = this.bridge.mediaUrl(item);
+    if (!url) {
+      this.toast(
+        this.bridge.kind === 'browser'
+          ? 'Playing local files needs the desktop app'
+          : `Could not open ${item.title}`,
+      );
+      return;
+    }
+
+    switch (item.kind) {
+      case 'photo':
+        this.media.showPhoto(item, url);
+        break;
+      case 'video':
+        // Stop music first: two soundtracks at once is never what was meant.
+        this.media.stopMusic();
+        this.media.playVideo(item, url);
+        break;
+      case 'music':
+        this.media.playMusic(item, url);
+        this.toast(`Playing ${item.title}`);
+        break;
+    }
+  }
+
   private toast(text: string): void {
     let toast = this.stage.querySelector<HTMLElement>('.xmb-toast');
     if (!toast) {
@@ -511,10 +664,6 @@ class Shell {
     window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => toast?.classList.remove('is-visible'), 3200);
   }
-}
-
-function placeholder(label: string): XmbItem {
-  return { id: label, label, kind: 'info', icon: 'folder' };
 }
 
 function message(error: unknown): string {

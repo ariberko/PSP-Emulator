@@ -28,11 +28,16 @@ pub use emulator::{launch, resolve, EmulatorStatus, LaunchError};
 pub use ppsspp_config::{load_pad_profile, PadProfile};
 pub use settings::{Settings, SettingsPatch, Store};
 
-use psp_metadata::LibraryScan;
+use psp_metadata::{LibraryScan, MediaScan};
 
 /// Scans every configured ROM folder.
 pub fn scan(settings: &Settings) -> LibraryScan {
     psp_metadata::scan_library(&settings.rom_paths)
+}
+
+/// Scans every configured media folder for photos, music and video.
+pub fn scan_media(settings: &Settings) -> MediaScan {
+    psp_metadata::scan_media(&settings.media_paths)
 }
 
 /// Version string reported to the UI by the "System Information" item.

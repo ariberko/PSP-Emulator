@@ -20,5 +20,8 @@ psp-host = { path = "../../../crates/psp-host" }
 psp-metadata = { path = "../../../crates/psp-metadata" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tauri = { version = "2", features = [] }
+# protocol-asset serves local media to the webview, so photos and video stream
+# from disk instead of crossing IPC. Required by the assetProtocol block in
+# tauri.conf.json.
+tauri = { version = "2", features = ["protocol-asset"] }
 tauri-plugin-dialog = "2"

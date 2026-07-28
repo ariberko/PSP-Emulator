@@ -26,6 +26,7 @@
 pub mod cso;
 pub mod game;
 pub mod iso;
+pub mod media;
 pub mod pbp;
 pub mod scan;
 pub mod sfo;
@@ -38,6 +39,7 @@ pub mod testkit_png;
 pub use cso::CsoReader;
 pub use game::{Game, GameFormat};
 pub use iso::{FileSource, IsoReader, ReadAt};
+pub use media::{scan_media, scan_media_with_depth, MediaItem, MediaKind, MediaScan};
 pub use pbp::{Pbp, PbpSection};
 pub use scan::{scan_library, scan_library_with_depth, LibraryScan, ScanProblem};
 pub use sfo::{Sfo, SfoValue};

@@ -60,6 +60,26 @@ export interface EmulatorStatus {
   source: string | null;
 }
 
+export type MediaKind = 'photo' | 'music' | 'video';
+
+/** Mirrors `psp_metadata::MediaItem`. */
+export interface MediaItem {
+  id: string;
+  title: string;
+  path: string;
+  kind: MediaKind;
+  size_bytes: number;
+  extension: string;
+}
+
+/** Mirrors `psp_metadata::MediaScan`. */
+export interface MediaScan {
+  photos: MediaItem[];
+  music: MediaItem[];
+  videos: MediaItem[];
+  missing_roots: string[];
+}
+
 /**
  * Controller mapping imported from PPSSPP's own `controls.ini`.
  *
@@ -91,6 +111,17 @@ export interface HostBridge {
   hostVersion(): Promise<string>;
   /** PPSSPP's own controller mapping, if it has one. */
   padProfile(): Promise<PadProfile>;
+  /** Photos, music and video in the configured media folders. */
+  scanMedia(): Promise<MediaScan>;
+  /** Opens a folder picker and adds the result to `media_paths`. */
+  addMediaFolder(): Promise<Settings | null>;
+  /**
+   * A URL the webview can load for a local file.
+   *
+   * On the desktop this goes through Tauri's asset protocol so large files stream
+   * rather than crossing IPC; in the browser there is no local file to serve.
+   */
+  mediaUrl(item: MediaItem): string | null;
 }
 
 /** Human-readable file size, e.g. `1.4 GB`. */
