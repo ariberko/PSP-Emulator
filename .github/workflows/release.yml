@@ -1,0 +1,156 @@
+name: Release
+
+# Tag a version to publish: `git tag v0.2.0 && git push --tags`.
+# Also runnable by hand, which is how a build is tested without minting a tag.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (for a dry run)'
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # Every platform that can build gets published, even if another fails —
+      # a broken macOS runner should not withhold the Windows installer.
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            # Two artifacts from one build: portable and distro-installable.
+            bundles: appimage,deb
+          - os: windows-latest
+            label: Windows
+            bundles: nsis
+          - os: macos-latest
+            label: macOS (Apple silicon)
+            target: aarch64-apple-darwin
+            bundles: dmg
+          - os: macos-13
+            label: macOS (Intel)
+            target: x86_64-apple-darwin
+            bundles: dmg
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target || '' }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          # Otherwise both macOS jobs share one cache and thrash it.
+          key: ${{ matrix.target || matrix.os }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/shell/package-lock.json
+
+      - name: Install Linux webview dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev \
+            librsvg2-dev patchelf
+
+      - name: Build the shell bundle
+        run: |
+          npm --prefix apps/shell ci
+          npm --prefix apps/shell run build
+
+      # The icon set is committed, so this only regenerates it if the source SVG
+      # moved ahead of it. Kept out of the build so a missing browser cannot fail
+      # a release.
+      - name: Install Tauri CLI
+        run: npm --prefix apps/desktop ci
+
+      - name: Bundle the desktop app
+        working-directory: apps/desktop
+        run: npx tauri build --bundles ${{ matrix.bundles }} ${{ matrix.target && format('--target {0}', matrix.target) || '' }}
+
+      # Digests let a download be verified, and the Release entity records them.
+      - name: Collect artifacts and digests
+        id: collect
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # Bundle output lands under a target triple directory when --target is
+          # passed, and directly under target/release otherwise.
+          find target -path '*/release/bundle/*' -type f \
+            \( -name '*.AppImage' -o -name '*.deb' -o -name '*.dmg' -o -name '*-setup.exe' -o -name '*.msi' \) \
+            -exec cp {} dist/ \;
+
+          if [ -z "$(ls -A dist)" ]; then
+            echo "No bundles were produced — failing rather than publishing an empty release." >&2
+            exit 1
+          fi
+
+          # SHA256SUMS accompanies the release so each file can be checked.
+          ( cd dist && sha256sum * > SHA256SUMS.txt )
+          echo "Artifacts:"
+          cat dist/SHA256SUMS.txt
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.label }}
+          path: dist/*
+          if-no-files-found: error
+
+  publish:
+    name: Publish the GitHub Release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only a real tag publishes; a manual dry run stops after building.
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Flatten and re-checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          # Per-platform SHA256SUMS files are dropped and one is written across
+          # everything, so the release carries a single authoritative list.
+          find artifacts -type f ! -name 'SHA256SUMS.txt' -exec cp {} dist/ \;
+          ( cd dist && sha256sum * > SHA256SUMS.txt )
+          cat dist/SHA256SUMS.txt
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+          draft: false
+          fail_on_unmatched_files: true
+
+      # Populating the Base44 Release entity is deliberately separate and
+      # opt-in: it needs a workspace API key, and a release should still publish
+      # to GitHub if that key is absent or the backend is unreachable. Until the
+      # secret is set this step is skipped, and the download page falls back to
+      # its "check GitHub Releases" state.
+      - name: Record the release in Base44
+        if: ${{ env.BASE44_API_KEY != '' }}
+        env:
+          BASE44_API_KEY: ${{ secrets.BASE44_API_KEY }}
+          BASE44_APP_ID: ${{ secrets.BASE44_APP_ID }}
+          TAG: ${{ github.ref_name }}
+        run: node .github/scripts/record-release.mjs

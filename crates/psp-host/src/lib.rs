@@ -21,21 +21,46 @@
 //! ```
 
 pub mod emulator;
+pub mod ppsspp_config;
+pub mod save_states;
 pub mod settings;
 
 pub use emulator::{launch, resolve, EmulatorStatus, LaunchError};
+pub use ppsspp_config::{load_pad_profile, PadProfile};
+pub use save_states::{scan_save_states, SaveState, SaveStateScan};
 pub use settings::{Settings, SettingsPatch, Store};
 
-use psp_metadata::LibraryScan;
+use psp_metadata::{LibraryScan, MediaScan};
 
 /// Scans every configured ROM folder.
 pub fn scan(settings: &Settings) -> LibraryScan {
     psp_metadata::scan_library(&settings.rom_paths)
 }
 
+/// Scans every configured media folder for photos, music and video.
+pub fn scan_media(settings: &Settings) -> MediaScan {
+    psp_metadata::scan_media(&settings.media_paths)
+}
+
 /// Version string reported to the UI by the "System Information" item.
 pub fn host_version() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+/// Finds PPSSPP's save states, for cloud sync.
+pub fn save_states(settings: &Settings) -> SaveStateScan {
+    let status = emulator::resolve(settings.ppsspp_path.as_deref());
+    save_states::scan_save_states(status.path.as_deref())
+}
+
+/// Reads the controller mapping PPSSPP already has, if any.
+///
+/// Resolves the emulator first so a portable Windows install — which keeps its
+/// memory stick beside the executable — is found as well as the standard
+/// home-directory locations.
+pub fn pad_profile(settings: &Settings) -> PadProfile {
+    let status = emulator::resolve(settings.ppsspp_path.as_deref());
+    ppsspp_config::load_pad_profile(status.path.as_deref())
 }
 
 #[cfg(test)]

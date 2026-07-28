@@ -6,6 +6,8 @@
  * mock stands in and the UI code never has to ask which one it is running under.
  */
 
+import { convertFileSrc } from '@tauri-apps/api/core';
+
 import { mockBridge } from './mock';
 import type { HostBridge } from './types';
 
@@ -44,6 +46,13 @@ const tauriBridge: HostBridge = {
   emulatorStatus: () => invoke('emulator_status'),
   addRomFolder: () => invoke('add_rom_folder'),
   hostVersion: () => invoke('host_version'),
+  padProfile: () => invoke('pad_profile'),
+  scanMedia: () => invoke('scan_media'),
+  addMediaFolder: () => invoke('add_media_folder'),
+  // The Rust side widens the asset-protocol scope to the configured folders, so
+  // this URL streams the file straight into an <img>, <audio> or <video>.
+  mediaUrl: (item) => convertFileSrc(item.path),
+  saveStates: () => invoke('save_states'),
 };
 
 export function createBridge(): HostBridge {

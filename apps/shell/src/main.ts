@@ -9,7 +9,17 @@
 import './style.css';
 
 import { createBridge } from './platform/bridge';
-import { gameSublabel, type Game, type HostBridge, type Settings } from './platform/types';
+import {
+  gameSublabel,
+  type Game,
+  type HostBridge,
+  type MediaItem,
+  type MediaScan,
+  type PadProfile,
+  type SaveStateScan,
+  type Settings,
+} from './platform/types';
+import { mediaSublabel, MediaSurface } from './xmb/media';
 import { XmbAudio } from './xmb/audio';
 import { keyBindings, InputRouter, type ControllerChange } from './xmb/input';
 import { faceGlyphs, type ControllerInfo } from './xmb/pad';
@@ -33,18 +43,24 @@ class Shell {
   private readonly bridge: HostBridge;
   private readonly view: XmbView;
   private readonly audio = new XmbAudio();
+  private readonly media: MediaSurface;
   private readonly stage: HTMLElement;
   private state: XmbState;
   private wave: Wave | null = null;
   private input: InputRouter | null = null;
   private settings: Settings | null = null;
   private controllers: ControllerInfo[] = [];
+  private padProfile: PadProfile | null = null;
+  private saveStates: SaveStateScan | null = null;
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
     this.bridge = createBridge();
     this.stage = root;
     this.view = new XmbView(root);
+    this.media = new MediaSurface(root, {
+      onError: (text) => this.toast(text),
+    });
     this.state = createState(this.buildCategories([]), INITIAL_CATEGORY);
   }
 
@@ -60,7 +76,9 @@ class Shell {
     this.audio.play('boot');
 
     await this.loadSettings();
+    await this.loadPadProfile();
     await this.refreshLibrary({ announce: false });
+    await this.refreshMedia({ announce: false });
   }
 
   // --- Wiring ------------------------------------------------------------
@@ -78,6 +96,13 @@ class Shell {
   private bindInput(): void {
     this.input = new InputRouter(
       (action) => {
+        // A photo or video surface owns input while it is up, so the cursor does
+        // not move behind it.
+        if (this.media.isOpen) {
+          this.handleMediaInput(action);
+          return;
+        }
+
         const { state, moved, effect } = reduce(this.state, action);
         this.state = state;
 
@@ -101,6 +126,27 @@ class Shell {
   }
 
   /**
+   * Input while a photo or video fills the screen.
+   *
+   * Only ○ and ✕ do anything: directions are swallowed rather than moving a
+   * cursor the user cannot see.
+   */
+  private handleMediaInput(action: 'up' | 'down' | 'left' | 'right' | 'confirm' | 'back'): void {
+    if (action === 'back') {
+      this.audio.play('back');
+      this.media.closeOverlay();
+      return;
+    }
+    if (action === 'confirm') {
+      const state = this.media.togglePlayback();
+      // A photo has nothing to toggle, so ✕ leaving it open is correct.
+      if (state !== 'idle') {
+        this.audio.play('confirm');
+      }
+    }
+  }
+
+  /**
    * Reacts to a controller being paired or removed.
    *
    * Pairing a pad over Bluetooth gives no feedback that the app noticed, so this
@@ -116,8 +162,7 @@ class Shell {
         : `${change.controller.name} disconnected`,
     );
     // Keep the Settings entry's reading current.
-    this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
-    this.view.render(this.state);
+    this.refreshSettingsColumn();
   }
 
   private syncControllers(): void {
@@ -169,6 +214,87 @@ class Shell {
     }
   }
 
+  /**
+   * Adopts the controller mapping PPSSPP already has.
+   *
+   * If someone has remapped ✕ in PPSSPP, the XMB agreeing with the game beats the
+   * two disagreeing. Failure is silent by design: the built-in mapping already
+   * works, so a missing or unreadable controls.ini is not worth a warning.
+   */
+  private async loadPadProfile(): Promise<void> {
+    try {
+      this.padProfile = await this.bridge.padProfile();
+      this.input?.setPadOverrides(this.padProfile.buttons);
+    } catch {
+      this.padProfile = null;
+    }
+    // The Settings column was built before this resolved, so its Controller
+    // reading is stale until rebuilt.
+    this.refreshSettingsColumn();
+  }
+
+  /** Rebuilds the Settings items so their readings reflect current state. */
+  private refreshSettingsColumn(): void {
+    this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
+    this.view.render(this.state);
+  }
+
+  /**
+   * Finds PPSSPP's save states.
+   *
+   * Read on demand rather than at startup: hashing every state costs real I/O,
+   * and nothing needs the result until Cloud Saves is opened.
+   */
+  private async loadSaveStates(): Promise<void> {
+    try {
+      this.saveStates = await this.bridge.saveStates();
+    } catch {
+      this.saveStates = null;
+    }
+    this.state = replaceCategoryItems(this.state, 'network', this.networkItems());
+    this.view.render(this.state);
+  }
+
+  /** Reading for the Cloud Saves entry. */
+  private saveStateSummary(): string {
+    const scan = this.saveStates;
+    if (!scan) {
+      return 'Sync save states with your Base44 account';
+    }
+    if (scan.states.length === 0) {
+      return 'No save states found on this machine';
+    }
+    const games = new Set(scan.states.map((s) => s.disc_id)).size;
+    return `${scan.states.length} state${scan.states.length === 1 ? '' : 's'} · ${games} game${games === 1 ? '' : 's'}`;
+  }
+
+  /** Rescans media folders and refills the Photo, Music and Video categories. */
+  private async refreshMedia(options: { announce: boolean }): Promise<void> {
+    let scan: MediaScan;
+    try {
+      scan = await this.bridge.scanMedia();
+    } catch (error) {
+      this.toast(`Media scan failed: ${message(error)}`);
+      return;
+    }
+
+    this.state = replaceCategoryItems(this.state, 'photo', this.mediaItems(scan.photos, 'photo'));
+    this.state = replaceCategoryItems(this.state, 'music', this.mediaItems(scan.music, 'music'));
+    this.state = replaceCategoryItems(this.state, 'video', this.mediaItems(scan.videos, 'video'));
+    this.view.render(this.state);
+
+    if (scan.missing_roots.length > 0) {
+      this.toast(`Media folder not found: ${scan.missing_roots[0]}`);
+    } else if (options.announce) {
+      const total = scan.photos.length + scan.music.length + scan.videos.length;
+      this.toast(
+        total === 0
+          ? 'No media found in those folders'
+          : `${total} media file${total === 1 ? '' : 's'} found`,
+      );
+    }
+  }
+
   private async refreshLibrary(options: { announce: boolean }): Promise<void> {
     try {
       const scan = await this.bridge.scanLibrary();
@@ -196,9 +322,9 @@ class Shell {
         glyph: 'settings',
         items: this.settingsItems(),
       },
-      { id: 'photo', label: 'Photo', glyph: 'photo', items: [placeholder('No photos')] },
-      { id: 'music', label: 'Music', glyph: 'music', items: [placeholder('No music')] },
-      { id: 'video', label: 'Video', glyph: 'video', items: [placeholder('No videos')] },
+      { id: 'photo', label: 'Photo', glyph: 'photo', items: this.mediaItems([], 'photo') },
+      { id: 'music', label: 'Music', glyph: 'music', items: this.mediaItems([], 'music') },
+      { id: 'video', label: 'Video', glyph: 'video', items: this.mediaItems([], 'video') },
       { id: 'game', label: 'Game', glyph: 'game', items: this.gameItems(games) },
       { id: 'network', label: 'Network', glyph: 'network', items: this.networkItems() },
     ];
@@ -234,6 +360,45 @@ class Shell {
     });
 
     return items;
+  }
+
+  /**
+   * Items for one media category.
+   *
+   * The empty state names the category so the hint is actionable rather than a
+   * generic "nothing here".
+   */
+  private mediaItems(items: MediaItem[], kind: 'photo' | 'music' | 'video'): XmbItem[] {
+    const glyph = kind === 'photo' ? 'photo' : kind === 'music' ? 'music' : 'video';
+    const list: XmbItem[] = items.map((item) => ({
+      id: item.path,
+      label: item.title,
+      sublabel: mediaSublabel(item),
+      kind: 'action',
+      icon: glyph,
+      payload: item,
+    }));
+
+    if (list.length === 0) {
+      const noun = kind === 'photo' ? 'photos' : kind === 'music' ? 'music' : 'videos';
+      list.push({
+        id: `no-${kind}`,
+        label: `No ${noun} found`,
+        sublabel: 'Add a media folder in Settings',
+        kind: 'info',
+        icon: glyph,
+      });
+    }
+
+    list.push({
+      id: 'add-media-folder',
+      label: 'Add Media Folder',
+      sublabel: 'Choose where your photos, music and video live',
+      kind: 'action',
+      icon: 'folder',
+    });
+
+    return list;
   }
 
   private settingsItems(): XmbItem[] {
@@ -285,15 +450,29 @@ class Shell {
     ];
   }
 
-  /** Reading for the Settings entry: which pads the browser can see. */
+  /**
+   * Reading for the Settings entry: which pads are visible, and whether PPSSPP's
+   * own mapping was picked up.
+   */
   private controllerSummary(): string {
+    const imported = this.padProfile?.buttons ?? {};
+    const bindings = Object.values(imported).reduce((sum, list) => sum + list.length, 0);
+    const suffix = bindings > 0 ? '  ·  using PPSSPP’s mapping' : '';
+
     if (this.controllers.length === 0) {
-      return 'No controller detected — connect one by USB or Bluetooth';
+      // Kept short when there is a suffix to fit alongside it; the full "connect
+      // one by USB or Bluetooth" hint is only useful when there is nothing else
+      // to report.
+      return suffix
+        ? `No controller yet${suffix}`
+        : 'No controller detected — connect one by USB or Bluetooth';
     }
-    if (this.controllers.length === 1) {
-      return this.controllers[0].name;
-    }
-    return `${this.controllers[0].name} +${this.controllers.length - 1} more`;
+
+    const name =
+      this.controllers.length === 1
+        ? this.controllers[0].name
+        : `${this.controllers[0].name} +${this.controllers.length - 1} more`;
+    return `${name}${suffix}`;
   }
 
   /**
@@ -328,7 +507,7 @@ class Shell {
       {
         id: 'cloud-saves',
         label: 'Cloud Saves',
-        sublabel: 'Sync save states with your Base44 account',
+        sublabel: this.saveStateSummary(),
         kind: 'action',
         icon: 'cloud',
       },
@@ -367,6 +546,14 @@ class Shell {
       return;
     }
 
+    // Media items are identified by their payload rather than a fixed id, since
+    // their ids are file paths.
+    const media = effect.item.payload as MediaItem | undefined;
+    if (media && effect.item.id !== 'add-media-folder') {
+      this.openMedia(media);
+      return;
+    }
+
     switch (effect.item.id) {
       case 'refresh-library':
         this.toast('Scanning…');
@@ -378,9 +565,23 @@ class Shell {
         this.audio.setEnabled(enabled);
         this.settings = await this.bridge.saveSettings({ sound_enabled: enabled });
         // Rebuild so the item's sublabel reflects the new value.
-        this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
-        this.view.render(this.state);
+        this.refreshSettingsColumn();
         this.toast(`Sound effects ${enabled ? 'on' : 'off'}`);
+        break;
+      }
+
+      case 'add-media-folder': {
+        const updated = await this.bridge.addMediaFolder();
+        if (!updated) {
+          this.toast(
+            this.bridge.kind === 'browser'
+              ? 'Folder picking needs the desktop app'
+              : 'No folder chosen',
+          );
+          break;
+        }
+        this.settings = updated;
+        await this.refreshMedia({ announce: true });
         break;
       }
 
@@ -401,18 +602,28 @@ class Shell {
 
       case 'controller': {
         this.syncControllers();
+        // Re-read in case PPSSPP was configured since launch. This also rebuilds
+        // the Settings column, so the reading below is current either way.
+        await this.loadPadProfile();
+        const source = this.padProfile?.source;
+
         if (this.controllers.length === 0) {
           this.toast(
-            'No controller detected. Pair it, then press a button — some pads stay idle until then.',
+            source
+              ? `No controller detected, but PPSSPP’s mapping was read from ${source}`
+              : 'No controller detected. Pair it, then press a button — some pads stay idle until then.',
           );
           break;
+        }
+        if (source) {
+          this.toast(`Using PPSSPP’s controller mapping from ${source}`);
         }
         // Buzzing the pad is the clearest possible confirmation that the right
         // device is connected and that output reaches it too.
         this.input?.rumbleAll({ duration: 220, strong: 0.5, weak: 0.3 });
-        this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
-        this.view.render(this.state);
-        this.toast(`${this.controllers.map((c) => c.name).join(', ')} — rumble sent`);
+        if (!source) {
+          this.toast(`${this.controllers.map((c) => c.name).join(', ')} — rumble sent`);
+        }
         break;
       }
 
@@ -432,10 +643,56 @@ class Shell {
         break;
       }
 
-      case 'cloud-saves':
+      case 'cloud-saves': {
+        await this.loadSaveStates();
+        const scan = this.saveStates;
+        if (!scan || scan.states.length === 0) {
+          this.toast(
+            'No PPSSPP save states found yet — play a game and save, then check back',
+          );
+          break;
+        }
+        // Uploading needs the Base44 backend; until then, report exactly what was
+        // found rather than implying the sync already happened.
+        const games = new Set(scan.states.map((s) => s.disc_id)).size;
+        this.toast(
+          `${scan.states.length} save state${scan.states.length === 1 ? '' : 's'} across ` +
+            `${games} game${games === 1 ? '' : 's'} ready to sync — sign in to Base44 to upload`,
+        );
+        break;
+      }
+
       case 'check-updates':
         // Wired to the Base44 backend; see base44/functions.
-        this.toast('Sign in to Base44 to use this');
+        this.toast('Sign in to Base44 to check for updates');
+        break;
+    }
+  }
+
+  /** Opens a photo, or starts a track or video. */
+  private openMedia(item: MediaItem): void {
+    const url = this.bridge.mediaUrl(item);
+    if (!url) {
+      this.toast(
+        this.bridge.kind === 'browser'
+          ? 'Playing local files needs the desktop app'
+          : `Could not open ${item.title}`,
+      );
+      return;
+    }
+
+    switch (item.kind) {
+      case 'photo':
+        this.media.showPhoto(item, url);
+        break;
+      case 'video':
+        // Stop music first: two soundtracks at once is never what was meant.
+        this.media.stopMusic();
+        this.media.playVideo(item, url);
+        break;
+      case 'music':
+        this.media.playMusic(item, url);
+        this.toast(`Playing ${item.title}`);
         break;
     }
   }
@@ -456,10 +713,6 @@ class Shell {
     window.clearTimeout(this.toastTimer);
     this.toastTimer = window.setTimeout(() => toast?.classList.remove('is-visible'), 3200);
   }
-}
-
-function placeholder(label: string): XmbItem {
-  return { id: label, label, kind: 'info', icon: 'folder' };
 }
 
 function message(error: unknown): string {

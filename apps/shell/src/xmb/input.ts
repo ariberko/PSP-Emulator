@@ -16,6 +16,7 @@ import {
   rumble,
   type ControllerInfo,
   type PadDirection,
+  type PadOverrides,
   type PadSnapshot,
 } from './pad';
 import type { XmbInput } from './model';
@@ -78,6 +79,8 @@ export class InputRouter {
   private padDirections: ReadonlySet<PadDirection> = new Set();
   /** Identification cached per gamepad index; parsing the id string every frame is waste. */
   private identified = new Map<number, ControllerInfo>();
+  /** Extra button indices imported from PPSSPP, applied on top of the defaults. */
+  private overrides: PadOverrides = {};
 
   constructor(emit: (input: XmbInput) => void, options: InputRouterOptions = {}) {
     this.emit = emit;
@@ -207,6 +210,16 @@ export class InputRouter {
     return out;
   }
 
+  /**
+   * Adopts the mapping PPSSPP already has.
+   *
+   * Additive: these indices supplement the built-in mapping rather than replacing
+   * it, so importing a config can only ever add working buttons.
+   */
+  setPadOverrides(overrides: PadOverrides): void {
+    this.overrides = overrides;
+  }
+
   /** Buzzes every connected pad, e.g. to acknowledge launching a game. */
   rumbleAll(options?: { duration?: number; strong?: number; weak?: number }): void {
     for (const pad of navigator.getGamepads?.() ?? []) {
@@ -258,7 +271,7 @@ export class InputRouter {
         this.identified.set(pad.index, info);
       }
 
-      const snapshot: PadSnapshot = readPad(pad, info, this.padDirections);
+      const snapshot: PadSnapshot = readPad(pad, info, this.padDirections, this.overrides);
       for (const direction of snapshot.directions) {
         directions.add(direction);
         nowDown.add(direction);

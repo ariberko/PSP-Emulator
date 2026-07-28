@@ -42,6 +42,8 @@ export interface LibraryScan {
 export interface Settings {
   /** Folders scanned for games. */
   rom_paths: string[];
+  /** Folders scanned for photos, music and video. */
+  media_paths: string[];
   /** Explicit PPSSPP binary path; null means "search the usual places". */
   ppsspp_path: string | null;
   /** Launch PPSSPP already in fullscreen. */
@@ -60,6 +62,57 @@ export interface EmulatorStatus {
   source: string | null;
 }
 
+/** Mirrors `psp_host::SaveState`. */
+export interface SaveState {
+  disc_id: string;
+  disc_version: string | null;
+  slot: number;
+  path: string;
+  screenshot: string | null;
+  size_bytes: number;
+  checksum: string;
+  modified_ms: number | null;
+}
+
+/** Mirrors `psp_host::SaveStateScan`. */
+export interface SaveStateScan {
+  states: SaveState[];
+  source: string | null;
+}
+
+export type MediaKind = 'photo' | 'music' | 'video';
+
+/** Mirrors `psp_metadata::MediaItem`. */
+export interface MediaItem {
+  id: string;
+  title: string;
+  path: string;
+  kind: MediaKind;
+  size_bytes: number;
+  extension: string;
+}
+
+/** Mirrors `psp_metadata::MediaScan`. */
+export interface MediaScan {
+  photos: MediaItem[];
+  music: MediaItem[];
+  videos: MediaItem[];
+  missing_roots: string[];
+}
+
+/**
+ * Controller mapping imported from PPSSPP's own `controls.ini`.
+ *
+ * Mirrors `psp_host::PadProfile`. Applied on top of the shell's built-in
+ * mapping rather than replacing it — see `pad.ts`.
+ */
+export interface PadProfile {
+  /** Path the mapping was read from, for display. Null when none was found. */
+  source: string | null;
+  /** Action name (`"confirm"`, `"up"`, …) to gamepad button indices. */
+  buttons: Record<string, number[]>;
+}
+
 /**
  * Everything the shell needs from its host.
  *
@@ -76,6 +129,21 @@ export interface HostBridge {
   /** Opens a folder picker and adds the result to `rom_paths`. */
   addRomFolder(): Promise<Settings | null>;
   hostVersion(): Promise<string>;
+  /** PPSSPP's own controller mapping, if it has one. */
+  padProfile(): Promise<PadProfile>;
+  /** Photos, music and video in the configured media folders. */
+  scanMedia(): Promise<MediaScan>;
+  /** Opens a folder picker and adds the result to `media_paths`. */
+  addMediaFolder(): Promise<Settings | null>;
+  /**
+   * A URL the webview can load for a local file.
+   *
+   * On the desktop this goes through Tauri's asset protocol so large files stream
+   * rather than crossing IPC; in the browser there is no local file to serve.
+   */
+  mediaUrl(item: MediaItem): string | null;
+  /** PPSSPP's save states on this machine. */
+  saveStates(): Promise<SaveStateScan>;
 }
 
 /** Human-readable file size, e.g. `1.4 GB`. */

@@ -15,6 +15,9 @@ pub struct Settings {
     /// Folders scanned for games.
     #[serde(default)]
     pub rom_paths: Vec<PathBuf>,
+    /// Folders scanned for photos, music and video.
+    #[serde(default)]
+    pub media_paths: Vec<PathBuf>,
     /// Explicit PPSSPP binary. `None` means "look in the usual places".
     #[serde(default)]
     pub ppsspp_path: Option<PathBuf>,
@@ -31,6 +34,7 @@ impl Default for Settings {
     fn default() -> Self {
         Self {
             rom_paths: Vec::new(),
+            media_paths: Vec::new(),
             ppsspp_path: None,
             fullscreen: true,
             sound_enabled: true,
@@ -52,6 +56,7 @@ fn default_true() -> bool {
 #[derive(Debug, Clone, Default, Deserialize)]
 pub struct SettingsPatch {
     pub rom_paths: Option<Vec<PathBuf>>,
+    pub media_paths: Option<Vec<PathBuf>>,
     #[serde(default, deserialize_with = "deserialize_double_option")]
     pub ppsspp_path: Option<Option<PathBuf>>,
     pub fullscreen: Option<bool>,
@@ -78,6 +83,9 @@ impl Settings {
         if let Some(paths) = patch.rom_paths {
             self.rom_paths = paths;
         }
+        if let Some(paths) = patch.media_paths {
+            self.media_paths = paths;
+        }
         if let Some(path) = patch.ppsspp_path {
             self.ppsspp_path = path;
         }
@@ -98,6 +106,15 @@ impl Settings {
             return false;
         }
         self.rom_paths.push(path);
+        true
+    }
+
+    /// Adds a media folder, ignoring duplicates.
+    pub fn add_media_path(&mut self, path: PathBuf) -> bool {
+        if self.media_paths.contains(&path) {
+            return false;
+        }
+        self.media_paths.push(path);
         true
     }
 }

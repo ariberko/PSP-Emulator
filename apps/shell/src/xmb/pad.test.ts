@@ -303,6 +303,58 @@ describe('the analog stick', () => {
   });
 });
 
+describe('overrides imported from PPSSPP', () => {
+  const info = identifyController(CHROME_DUALSENSE);
+
+  it('adds a remapped confirm button', () => {
+    // Someone who bound ✕ to the top face button in PPSSPP gets that button in
+    // the XMB too.
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttons: [3] });
+    expect(readPad(pad, info, new Set(), { confirm: [3] }).confirm).toBe(true);
+  });
+
+  it('keeps the built-in mapping working alongside an override', () => {
+    // The safety property: importing a config must never take away a button that
+    // already worked, or a wrong controls.ini would break a fine controller.
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttons: [0] });
+    expect(readPad(pad, info, new Set(), { confirm: [3] }).confirm).toBe(true);
+  });
+
+  it('adds remapped directions', () => {
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttons: [4] });
+    expect([...readPad(pad, info, new Set(), { down: [4] }).directions]).toEqual(['down']);
+  });
+
+  it('leaves the D-pad working when directions are overridden', () => {
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttons: [13] });
+    expect([...readPad(pad, info, new Set(), { down: [4] }).directions]).toEqual(['down']);
+  });
+
+  it('adds a remapped back button', () => {
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttons: [2] });
+    expect(readPad(pad, info, new Set(), { back: [2] }).back).toBe(true);
+  });
+
+  it('ignores an override index the pad does not have', () => {
+    // A config naming a button this pad lacks must not throw or report a press.
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttonCount: 4 });
+    const snapshot = readPad(pad, info, new Set(), { confirm: [17] });
+    expect(snapshot.confirm).toBe(false);
+  });
+
+  it('an empty override set behaves exactly like no overrides', () => {
+    const pad = gamepad({ id: CHROME_DUALSENSE, buttons: [0] });
+    expect(readPad(pad, info, new Set(), {})).toEqual(readPad(pad, info));
+  });
+
+  it('works on a non-standard pad too', () => {
+    // Overrides layer over the Sony raw ordering, not just the standard mapping.
+    const ds4 = identifyController(FIREFOX_DS4);
+    const pad = gamepad({ id: FIREFOX_DS4, mapping: '', buttons: [1] });
+    expect(readPad(pad, ds4, new Set(), { confirm: [5] }).confirm).toBe(true);
+  });
+});
+
 describe('rumble', () => {
   it('does nothing when the pad has no actuator', () => {
     // Must never throw: haptics are a flourish, not a requirement.
