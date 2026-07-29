@@ -15,6 +15,16 @@ const REPO_URL = 'https://github.com/ariberko/PSP-Emulator';
  */
 const RELEASES_URL = '/api/functions/releases';
 
+/**
+ * Whether the installers ship with a playable game.
+ *
+ * Gated on a flag rather than shown unconditionally because the panel it reveals
+ * makes a promise — "a game is already included" — that must not appear on a build
+ * where `demo-roms/` is empty. Flip this in the same commit that adds the game; the
+ * checklist in `demo-roms/README.md` says so.
+ */
+const HAS_BUNDLED_GAME = false;
+
 const PLATFORM_LABELS = {
   windows: { name: 'Windows', hint: '10 or later · installer' },
   'macos-arm': { name: 'macOS (Apple silicon)', hint: 'M1 and later · .dmg' },
@@ -245,6 +255,11 @@ if (canvas && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
 
 for (const link of document.querySelectorAll('#repo-link')) {
   link.href = REPO_URL;
+}
+
+const includedGame = document.getElementById('included-game');
+if (includedGame && HAS_BUNDLED_GAME) {
+  includedGame.hidden = false;
 }
 
 void loadDownloads();

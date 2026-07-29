@@ -53,6 +53,8 @@ const tauriBridge: HostBridge = {
   // this URL streams the file straight into an <img>, <audio> or <video>.
   mediaUrl: (item) => convertFileSrc(item.path),
   saveStates: () => invoke('save_states'),
+  bundledRoms: () => invoke('bundled_roms'),
+  installBundledRoms: () => invoke('install_bundled_roms'),
 };
 
 export function createBridge(): HostBridge {

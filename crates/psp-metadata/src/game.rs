@@ -24,6 +24,15 @@ pub enum GameFormat {
 }
 
 impl GameFormat {
+    /// The format a path's extension implies, or `None` if it is not a game.
+    ///
+    /// Exposed because callers other than the scanner need the same judgement —
+    /// notably the bundled-ROM installer, which must copy games and leave a
+    /// licence file sitting beside them alone.
+    pub fn from_path(path: &Path) -> Option<Self> {
+        detect_format(path)
+    }
+
     pub fn label(&self) -> &'static str {
         match self {
             GameFormat::Iso => "ISO",

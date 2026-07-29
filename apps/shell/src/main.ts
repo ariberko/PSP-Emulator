@@ -10,7 +10,10 @@ import './style.css';
 
 import { createBridge } from './platform/bridge';
 import {
+  describeInstall,
+  formatSize,
   gameSublabel,
+  type BundledRom,
   type Game,
   type HostBridge,
   type MediaItem,
@@ -52,6 +55,7 @@ class Shell {
   private controllers: ControllerInfo[] = [];
   private padProfile: PadProfile | null = null;
   private saveStates: SaveStateScan | null = null;
+  private bundled: BundledRom[] = [];
   private toastTimer = 0;
 
   constructor(root: HTMLElement) {
@@ -77,6 +81,9 @@ class Shell {
 
     await this.loadSettings();
     await this.loadPadProfile();
+    // Before the first library scan, so an empty list can offer the bundled games
+    // in the same render rather than flickering the offer in a moment later.
+    await this.loadBundledRoms();
     await this.refreshLibrary({ announce: false });
     await this.refreshMedia({ announce: false });
   }
@@ -233,6 +240,57 @@ class Shell {
     this.refreshSettingsColumn();
   }
 
+  /**
+   * Asks the host which games this build ships with.
+   *
+   * Read once at startup because the answer cannot change while the app runs — the
+   * games live inside the installation. An empty answer is normal and makes the
+   * offer disappear entirely rather than leaving a button that copies nothing.
+   */
+  private async loadBundledRoms(): Promise<void> {
+    try {
+      this.bundled = await this.bridge.bundledRoms();
+    } catch {
+      this.bundled = [];
+    }
+    // The Settings column was built before this resolved, so the offer is missing
+    // from it until rebuilt — the same staleness the pad profile has.
+    this.refreshSettingsColumn();
+  }
+
+  /** Reading for the install offer: how many games, and how much disk they need. */
+  private bundledSummary(): string {
+    const count = this.bundled.length;
+    const bytes = this.bundled.reduce((sum, rom) => sum + rom.size_bytes, 0);
+    // One game is named, since that is more informative than "1 game".
+    const what =
+      count === 1
+        ? this.bundled[0].file_name.replace(/\.[^.]+$/, '')
+        : `${count} games`;
+    return `Copy ${what} (${formatSize(bytes)}) into your library`;
+  }
+
+  /**
+   * The offer to install the bundled games, or nothing when none are bundled.
+   *
+   * Returned as an array so both callers can splice it in without each repeating
+   * the "is anything bundled?" test.
+   */
+  private installBundledItem(): XmbItem[] {
+    if (this.bundled.length === 0) {
+      return [];
+    }
+    return [
+      {
+        id: 'install-bundled-roms',
+        label: 'Install Bundled Games',
+        sublabel: this.bundledSummary(),
+        kind: 'action',
+        icon: 'memstick',
+      },
+    ];
+  }
+
   /** Rebuilds the Settings items so their readings reflect current state. */
   private refreshSettingsColumn(): void {
     this.state = replaceCategoryItems(this.state, 'settings', this.settingsItems());
@@ -345,10 +403,15 @@ class Shell {
       items.push({
         id: 'no-games',
         label: 'No games found',
-        sublabel: 'Add a ROM folder in Settings',
+        sublabel: this.bundled.length > 0
+          ? 'Install the bundled games below, or add a ROM folder in Settings'
+          : 'Add a ROM folder in Settings',
         kind: 'info',
         icon: 'memstick',
       });
+      // Offered right where someone is looking when the list is empty, rather
+      // than only in Settings where they would have to go find it.
+      items.push(...this.installBundledItem());
     }
 
     items.push({
@@ -410,6 +473,7 @@ class Shell {
         kind: 'action',
         icon: 'folder',
       },
+      ...this.installBundledItem(),
       {
         id: 'toggle-sound',
         label: 'Sound Effects',
@@ -597,6 +661,21 @@ class Shell {
         }
         this.settings = updated;
         await this.refreshLibrary({ announce: true });
+        break;
+      }
+
+      case 'install-bundled-roms': {
+        this.toast('Installing the bundled games…');
+        try {
+          const outcome = await this.bridge.installBundledRoms();
+          this.settings = outcome.settings;
+          // Rescan first: the toast should be the last word, and a scan failure
+          // after a "done" message would read as a contradiction.
+          await this.refreshLibrary({ announce: false });
+          this.toast(describeInstall(outcome.report));
+        } catch (error) {
+          this.toast(`Could not install the bundled games: ${message(error)}`);
+        }
         break;
       }
 

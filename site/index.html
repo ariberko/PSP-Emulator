@@ -212,6 +212,28 @@
         <div class="download-grid" id="download-grid">
           <!-- Populated from the releases function. -->
         </div>
+        <!--
+          Judges arriving with no ROMs would otherwise reach an empty game list, so
+          say up front that a playable game is already inside the installer. The
+          standalone link points at the release page rather than a constructed asset
+          URL, which cannot go stale when a file is renamed.
+        -->
+        <div class="included-game" id="included-game" hidden>
+          <h3>A game is already included</h3>
+          <p>
+            Every installer ships with homebrew we wrote ourselves, so there is nothing
+            to find before you can play. Open <strong>Game</strong> and pick
+            <strong>Install Bundled Games</strong> — the shell copies it into your library
+            and rescans, and you are in.
+          </p>
+          <p class="included-game-alt">
+            Want the file on its own, or already have your own dumps? Grab it from the
+            <a id="assets-link" href="https://github.com/ariberko/PSP-Emulator/releases/latest"
+               rel="noopener">release assets</a>, or point
+            <strong>Settings → Add ROM Folder</strong> at any folder of your own.
+          </p>
+        </div>
+
         <p class="requirements">
           Requires <a href="https://www.ppsspp.org/" rel="noopener">PPSSPP</a> installed
           separately. PSP-Emulator finds it on your <code>PATH</code> or in the usual
