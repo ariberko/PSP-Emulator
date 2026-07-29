@@ -131,6 +131,15 @@ jobs:
           # Per-platform SHA256SUMS files are dropped and one is written across
           # everything, so the release carries a single authoritative list.
           find artifacts -type f ! -name 'SHA256SUMS.txt' -exec cp {} dist/ \;
+
+          # The bundled games ride along as standalone assets. They are already
+          # inside every installer, so this is only for someone who wants the file
+          # on its own — and it is what the site's "release assets" link leads to.
+          # No -o for readmes or licences: those belong in the repo, not as assets.
+          find demo-roms -maxdepth 1 -type f \
+            \( -iname '*.iso' -o -iname '*.cso' -o -iname '*.pbp' -o -iname '*.elf' -o -iname '*.prx' \) \
+            -exec cp {} dist/ \;
+
           ( cd dist && sha256sum * > SHA256SUMS.txt )
           cat dist/SHA256SUMS.txt
 

@@ -113,6 +113,33 @@ export interface PadProfile {
   buttons: Record<string, number[]>;
 }
 
+/** Mirrors `psp_host::BundledRom`: one game shipped inside the installer. */
+export interface BundledRom {
+  file_name: string;
+  size_bytes: number;
+}
+
+/** Mirrors `psp_host::bundled_roms::InstallFailure`. */
+export interface InstallFailure {
+  file_name: string;
+  reason: string;
+}
+
+/** Mirrors `psp_host::InstallReport`. */
+export interface InstallReport {
+  target: string;
+  installed: string[];
+  already_present: string[];
+  failed: InstallFailure[];
+  bytes_copied: number;
+}
+
+/** Mirrors the `InstallOutcome` the `install_bundled_roms` command returns. */
+export interface InstallOutcome {
+  settings: Settings;
+  report: InstallReport;
+}
+
 /**
  * Everything the shell needs from its host.
  *
@@ -144,6 +171,43 @@ export interface HostBridge {
   mediaUrl(item: MediaItem): string | null;
   /** PPSSPP's save states on this machine. */
   saveStates(): Promise<SaveStateScan>;
+  /**
+   * Games shipped inside this build, if any.
+   *
+   * Empty is a normal answer, not a failure: the Settings item describes what it
+   * would install and disables itself when there is nothing to install.
+   */
+  bundledRoms(): Promise<BundledRom[]>;
+  /** Copies the bundled games somewhere writable and adds that folder to the library. */
+  installBundledRoms(): Promise<InstallOutcome>;
+}
+
+/**
+ * One line summarising what an install did, for the Settings item's sublabel.
+ *
+ * Every branch has to be distinguishable, because "nothing was copied" has three
+ * very different causes: it all worked already, it all failed, or the build ships
+ * no games. Collapsing them into one message is how a broken install reads as a
+ * successful one.
+ */
+export function describeInstall(report: InstallReport): string {
+  const copied = report.installed.length;
+  const present = report.already_present.length;
+  const failed = report.failed.length;
+
+  if (failed > 0) {
+    const first = report.failed[0];
+    const rest = failed > 1 ? ` (and ${failed - 1} more)` : '';
+    return `${first.file_name} failed: ${first.reason}${rest}`;
+  }
+  if (copied > 0) {
+    const size = report.bytes_copied > 0 ? `, ${formatSize(report.bytes_copied)}` : '';
+    return `Installed ${copied} ${copied === 1 ? 'game' : 'games'}${size}`;
+  }
+  if (present > 0) {
+    return `Already installed — ${present} ${present === 1 ? 'game' : 'games'} in place`;
+  }
+  return 'This build ships no games';
 }
 
 /** Human-readable file size, e.g. `1.4 GB`. */

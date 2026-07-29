@@ -11,9 +11,11 @@
  */
 
 import type {
+  BundledRom,
   EmulatorStatus,
   Game,
   HostBridge,
+  InstallOutcome,
   LibraryScan,
   MediaItem,
   MediaScan,
@@ -163,6 +165,26 @@ export function mockBridge(): HostBridge {
     async saveStates(): Promise<SaveStateScan> {
       // No PPSSPP install in the browser, so there are no states to find.
       return { states: [], source: null };
+    },
+
+    async bundledRoms(): Promise<BundledRom[]> {
+      // Nothing to install into: the browser demo has no filesystem. Reporting an
+      // empty set makes the Settings item say so instead of offering a copy that
+      // cannot happen.
+      return [];
+    },
+
+    async installBundledRoms(): Promise<InstallOutcome> {
+      return {
+        settings,
+        report: {
+          target: '',
+          installed: [],
+          already_present: [],
+          failed: [],
+          bytes_copied: 0,
+        },
+      };
     },
 
     mediaUrl(item: MediaItem): string | null {

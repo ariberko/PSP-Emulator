@@ -136,6 +136,67 @@ fn host_version() -> String {
     psp_host::host_version()
 }
 
+/// Where the games that ship with the app live inside the installation.
+///
+/// A resource path is the only thing here that needs Tauri, which is why the
+/// installer itself takes both directories as parameters.
+///
+/// In a release bundle this is the only location. During `tauri dev` there is no
+/// bundle, so fall back to the folder in the checkout — otherwise the feature
+/// would be untestable without building an installer.
+fn bundled_rom_dir(app: &tauri::AppHandle) -> PathBuf {
+    if let Ok(path) = app
+        .path()
+        .resolve(BUNDLED_ROMS, tauri::path::BaseDirectory::Resource)
+    {
+        if path.is_dir() {
+            return path;
+        }
+    }
+    PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("../../..")
+        .join(BUNDLED_ROMS)
+}
+
+/// Folder name used in both the bundle and the repository, so the dev fallback
+/// above and `tauri.conf.json`'s `resources` entry cannot drift apart.
+const BUNDLED_ROMS: &str = "demo-roms";
+
+/// Where installed games are copied to: writable, and survives an app update.
+fn games_dir(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    app.path()
+        .app_data_dir()
+        .map(|dir| dir.join("Games"))
+        .map_err(|e| format!("Could not find a writable data folder: {e}"))
+}
+
+/// The games this build ships with, so the UI can offer them by name and size —
+/// or say plainly that there are none rather than showing a button that does
+/// nothing.
+#[tauri::command]
+fn bundled_roms(app: tauri::AppHandle) -> Vec<psp_host::BundledRom> {
+    psp_host::bundled_roms::list(&bundled_rom_dir(&app))
+}
+
+/// Copies the bundled games somewhere writable and adds that folder to the library.
+#[derive(serde::Serialize)]
+struct InstallOutcome {
+    settings: Settings,
+    report: psp_host::InstallReport,
+}
+
+#[tauri::command]
+fn install_bundled_roms(
+    app: tauri::AppHandle,
+    state: State<'_, AppState>,
+) -> CommandResult<InstallOutcome> {
+    let target = games_dir(&app)?;
+    let (settings, report) =
+        psp_host::install_bundled_roms(&state.store, &bundled_rom_dir(&app), &target)
+            .map_err(|e| format!("Could not install the bundled games: {e}"))?;
+    Ok(InstallOutcome { settings, report })
+}
+
 /// PPSSPP's save states, the local half of cloud sync.
 #[tauri::command]
 fn save_states(state: State<'_, AppState>) -> psp_host::SaveStateScan {
@@ -174,7 +235,9 @@ pub fn run() {
             add_media_folder,
             host_version,
             pad_profile,
-            save_states
+            save_states,
+            bundled_roms,
+            install_bundled_roms
         ])
         .run(tauri::generate_context!())
         .expect("failed to start the PSP-Emulator shell");

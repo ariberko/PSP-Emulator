@@ -430,6 +430,37 @@ section {
   color: var(--text-muted);
 }
 
+/* Sits between the installer grid and the PPSSPP note: the thing to read after
+   picking a download, before wondering what to play. */
+.included-game {
+  max-width: 62ch;
+  margin: 2rem auto 0;
+  padding: 1.5rem 1.75rem;
+  border: 1px solid var(--edge-strong);
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.035);
+  text-align: center;
+}
+
+.included-game h3 {
+  margin: 0 0 0.6rem;
+  font-size: 1.05rem;
+}
+
+.included-game p {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-muted);
+}
+
+/* Scoped rather than bare, so it outranks `.included-game p` above without
+   reaching for !important. */
+.included-game .included-game-alt {
+  margin-top: 0.9rem;
+  font-size: 0.88rem;
+  color: var(--text-faint);
+}
+
 .requirements {
   max-width: 62ch;
   margin: 0 auto;

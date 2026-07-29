@@ -72,11 +72,22 @@ try {
   fail(`could not read ${DIST}/SHA256SUMS.txt: ${error.message}`);
 }
 
+/**
+ * Assets that are deliberately not platform builds.
+ *
+ * The release also carries the bundled games as standalone files. They are not
+ * installers and have no `platform`, so they must be skipped *silently* — warning
+ * about them every release would train the reader to ignore the warning that
+ * matters, which is an installer nobody recognised.
+ */
+const NOT_A_BUILD = /\.(iso|cso|pbp|elf|prx)$/i;
+
 const rows = [];
 const skipped = [];
 
 for (const name of readdirSync(DIST)) {
   if (name === 'SHA256SUMS.txt') continue;
+  if (NOT_A_BUILD.test(name)) continue;
   const platform = platformFor(name);
   if (!platform) {
     skipped.push(name);

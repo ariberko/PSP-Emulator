@@ -13,3 +13,6 @@ serde_json = { workspace = true }
 
 [dev-dependencies]
 tempfile = "3"
+# The bundled-ROM tests install real, parseable containers and then scan them, so
+# they need the fixture builders.
+psp-metadata = { path = "../psp-metadata", features = ["testkit"] }

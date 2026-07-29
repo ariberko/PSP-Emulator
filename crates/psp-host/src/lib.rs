@@ -20,11 +20,13 @@
 //! # Ok::<(), emulator::LaunchError>(())
 //! ```
 
+pub mod bundled_roms;
 pub mod emulator;
 pub mod ppsspp_config;
 pub mod save_states;
 pub mod settings;
 
+pub use bundled_roms::{BundledRom, InstallReport};
 pub use emulator::{launch, resolve, EmulatorStatus, LaunchError};
 pub use ppsspp_config::{load_pad_profile, PadProfile};
 pub use save_states::{scan_save_states, SaveState, SaveStateScan};
@@ -40,6 +42,29 @@ pub fn scan(settings: &Settings) -> LibraryScan {
 /// Scans every configured media folder for photos, music and video.
 pub fn scan_media(settings: &Settings) -> MediaScan {
     psp_metadata::scan_media(&settings.media_paths)
+}
+
+/// Installs the bundled games and adds their folder to the library.
+///
+/// Two steps that must not come apart: copying the games without registering the
+/// folder leaves the user staring at the same empty list, which reads as the
+/// button having done nothing.
+///
+/// The folder is registered whenever it ends up holding games — including when
+/// they were all already there from a previous run — but not when the build ships
+/// no games at all, since pointing the scanner at a folder that does not exist
+/// would only produce a "missing folder" warning.
+pub fn install_bundled_roms(
+    store: &Store,
+    source: &std::path::Path,
+    target: &std::path::Path,
+) -> std::io::Result<(Settings, InstallReport)> {
+    let report = bundled_roms::install(source, target)?;
+    let mut settings = store.load();
+    if report.is_populated() && settings.add_rom_path(target.to_path_buf()) {
+        store.save(&settings)?;
+    }
+    Ok((settings, report))
 }
 
 /// Version string reported to the UI by the "System Information" item.
@@ -87,5 +112,75 @@ mod tests {
     #[test]
     fn host_version_is_not_empty() {
         assert!(!host_version().is_empty());
+    }
+
+    /// Source folder holding one real, parseable homebrew package.
+    fn bundle() -> tempfile::TempDir {
+        use psp_metadata::testkit::{PbpBuilder, SfoBuilder};
+        let dir = tempfile::tempdir().unwrap();
+        std::fs::write(
+            dir.path().join("Bundled.pbp"),
+            PbpBuilder::new()
+                .param_sfo(
+                    SfoBuilder::new()
+                        .text("CATEGORY", "MG")
+                        .text("TITLE", "Bundled Homebrew")
+                        .build(),
+                )
+                .data_psp(b"placeholder".to_vec())
+                .build(),
+        )
+        .unwrap();
+        dir
+    }
+
+    #[test]
+    fn installing_bundled_roms_registers_the_folder_and_the_games_then_scan() {
+        let config = tempfile::tempdir().unwrap();
+        let store = Store::new(config.path());
+        let source = bundle();
+        let target = tempfile::tempdir().unwrap();
+
+        let (settings, report) = install_bundled_roms(&store, source.path(), target.path()).unwrap();
+
+        assert_eq!(report.installed, ["Bundled.pbp"]);
+        assert!(settings.rom_paths.contains(&target.path().to_path_buf()));
+        // Persisted, not just returned — the next launch must still see it.
+        assert_eq!(store.load().rom_paths, settings.rom_paths);
+
+        let scan = scan(&settings);
+        assert_eq!(scan.games.len(), 1);
+        assert_eq!(scan.games[0].title, "Bundled Homebrew");
+    }
+
+    #[test]
+    fn installing_twice_does_not_add_the_folder_twice() {
+        let config = tempfile::tempdir().unwrap();
+        let store = Store::new(config.path());
+        let source = bundle();
+        let target = tempfile::tempdir().unwrap();
+
+        install_bundled_roms(&store, source.path(), target.path()).unwrap();
+        let (settings, report) = install_bundled_roms(&store, source.path(), target.path()).unwrap();
+
+        assert!(report.installed.is_empty());
+        assert_eq!(report.already_present, ["Bundled.pbp"]);
+        assert_eq!(settings.rom_paths.len(), 1);
+    }
+
+    #[test]
+    fn a_build_with_no_bundled_games_leaves_the_library_untouched() {
+        // Registering a folder that was never created would surface as a spurious
+        // "that folder is missing" warning in the UI.
+        let config = tempfile::tempdir().unwrap();
+        let store = Store::new(config.path());
+        let empty = tempfile::tempdir().unwrap();
+        let target = tempfile::tempdir().unwrap().path().join("Bundled Games");
+
+        let (settings, report) = install_bundled_roms(&store, empty.path(), &target).unwrap();
+
+        assert!(!report.is_populated());
+        assert!(settings.rom_paths.is_empty());
+        assert!(!target.exists());
     }
 }
