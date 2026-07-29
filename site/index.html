@@ -269,6 +269,20 @@
             covers the whole process — or load PSP homebrew, which its authors release
             freely and which runs here exactly like a retail disc.
           </p>
+          <!--
+            An unexplained Gatekeeper or SmartScreen block reads as a corrupt download,
+            and the natural response is to give up rather than to look for the override.
+            Said here, before the click, rather than left to be discovered.
+          -->
+          <p class="steps-note">
+            <strong>A note on the first launch.</strong> These builds are not
+            code-signed, so macOS will refuse to open the app until you right-click it
+            and choose <em>Open</em>, and Windows SmartScreen will show a warning where
+            you pick <em>More info → Run anyway</em>. Nothing is wrong with the
+            download — signing certificates cost money this project does not have. Every
+            release ships a <code>SHA256SUMS.txt</code> if you would rather verify the
+            file yourself.
+          </p>
         </div>
       </section>
     </main>
