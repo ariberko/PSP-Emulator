@@ -234,11 +234,42 @@
           </p>
         </div>
 
-        <p class="requirements">
-          Requires <a href="https://www.ppsspp.org/" rel="noopener">PPSSPP</a> installed
-          separately. PSP-Emulator finds it on your <code>PATH</code> or in the usual
-          install location, and you can point it anywhere in Settings.
-        </p>
+        <!--
+          Someone arriving cold has three unknowns: the emulator, the app, and where
+          games come from. Numbered so the third one — the awkward one — is answered
+          plainly instead of left as an exercise.
+        -->
+        <div class="getting-started">
+          <h3>Getting started, in three steps</h3>
+          <ol class="steps">
+            <li>
+              <strong>Install PPSSPP.</strong> Grab it from
+              <a href="https://www.ppsspp.org/" rel="noopener">ppsspp.org</a>. PSP-Emulator
+              does the front-end; PPSSPP does the emulating. Nothing else to configure —
+              the app finds it on your <code>PATH</code> or in the default install
+              location, and Settings → Emulator lets you point it anywhere.
+            </li>
+            <li>
+              <strong>Install PSP-Emulator</strong> from the download above and open it.
+              You will land on the XMB with an empty Game list, which is expected: the
+              app ships no game data.
+            </li>
+            <li>
+              <strong>Point it at some games.</strong> Choose <strong>Settings → Add ROM
+              Folder</strong> and pick any folder of <code>.iso</code>, <code>.cso</code>
+              or <code>.pbp</code> files. Titles, disc IDs and cover art are read straight
+              out of each file, so the list fills itself in.
+            </li>
+          </ol>
+          <p class="steps-note">
+            No games yet? Two legitimate routes: rip a UMD you own with a PSP and a
+            compatible drive — PPSSPP's
+            <a href="https://www.ppsspp.org/docs/getting-started/dumping-games/" rel="noopener"
+              >dumping guide</a>
+            covers the whole process — or load PSP homebrew, which its authors release
+            freely and which runs here exactly like a retail disc.
+          </p>
+        </div>
       </section>
     </main>
 

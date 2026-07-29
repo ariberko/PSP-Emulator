@@ -412,6 +412,16 @@ class Shell {
       // Offered right where someone is looking when the list is empty, rather
       // than only in Settings where they would have to go find it.
       items.push(...this.installBundledItem());
+      // The folder picker is the answer to the empty list, so put it here too.
+      // Someone on their first run should not have to guess that the fix lives
+      // in another category.
+      items.push({
+        id: 'add-rom-folder',
+        label: 'Add ROM Folder',
+        sublabel: 'Point at a folder of .iso, .cso or .pbp files',
+        kind: 'action',
+        icon: 'folder',
+      });
     }
 
     items.push({

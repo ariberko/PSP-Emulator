@@ -113,6 +113,14 @@ game dumps. This ships no game data and no firmware.
 PPSSPP is found on your `PATH` or in the standard install location for your OS;
 **Settings → Emulator** reports what was found, and you can point it anywhere.
 
+**No games yet?** Two legitimate routes. Rip a UMD you own — PPSSPP's
+[dumping guide](https://www.ppsspp.org/docs/getting-started/dumping-games/) covers
+what hardware you need and how — or load PSP homebrew, which its authors release
+freely and which the scanner and launcher treat exactly like a retail disc. If you
+only want to see the shell working, the testkit writes genuine ISO/CSO/PBP files
+containing nothing copyrighted — see
+[Developing without any game dumps](#developing-without-any-game-dumps).
+
 | | Keyboard | Controller |
 | --- | --- | --- |
 | Change category | ← → | D-pad / left stick |
