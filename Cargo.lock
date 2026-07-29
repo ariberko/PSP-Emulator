@@ -2282,7 +2282,7 @@ dependencies = [
 
 [[package]]
 name = "psp-emulator-desktop"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "psp-host",
  "psp-metadata",
@@ -2295,7 +2295,7 @@ dependencies = [
 
 [[package]]
 name = "psp-host"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "psp-metadata",
  "serde",
@@ -2305,7 +2305,7 @@ dependencies = [
 
 [[package]]
 name = "psp-metadata"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "miniz_oxide",
  "serde",
