@@ -65,6 +65,34 @@ jobs:
             libwebkit2gtk-4.1-dev libgtk-3-dev libappindicator3-dev \
             librsvg2-dev patchelf
 
+      # The committed version is only the fallback for dev builds. A tagged release
+      # derives its version from the tag, so the artifact names, the row recorded in
+      # Base44 and the app's own idea of its version cannot drift apart — which they
+      # did twice, each time leaving a fresh install convinced an update was waiting.
+      #
+      # Both files, because they answer different questions: tauri.conf.json names the
+      # bundles, and the workspace version is what CARGO_PKG_VERSION reports at
+      # runtime through psp_host::host_version.
+      - name: Take the version from the tag
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          # Refuse rather than guess: a malformed version would ship installers named
+          # after nonsense and record a row the update check could not compare.
+          if ! printf '%s' "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Tag $GITHUB_REF_NAME does not carry an x.y.z version." >&2
+            exit 1
+          fi
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" Cargo.toml
+          sed -i "s/\"version\": \"[^\"]*\"/\"version\": \"$VERSION\"/" apps/desktop/src-tauri/tauri.conf.json
+          # Assert rather than trust: a silently unmatched sed would be invisible until
+          # someone noticed the filenames months later.
+          grep -q "^version = \"$VERSION\"$" Cargo.toml
+          grep -q "\"version\": \"$VERSION\"" apps/desktop/src-tauri/tauri.conf.json
+          echo "Building as $VERSION"
+
       - name: Build the shell bundle
         run: |
           npm --prefix apps/shell ci
