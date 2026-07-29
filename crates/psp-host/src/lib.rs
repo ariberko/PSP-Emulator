@@ -141,7 +141,8 @@ mod tests {
         let source = bundle();
         let target = tempfile::tempdir().unwrap();
 
-        let (settings, report) = install_bundled_roms(&store, source.path(), target.path()).unwrap();
+        let (settings, report) =
+            install_bundled_roms(&store, source.path(), target.path()).unwrap();
 
         assert_eq!(report.installed, ["Bundled.pbp"]);
         assert!(settings.rom_paths.contains(&target.path().to_path_buf()));
@@ -161,7 +162,8 @@ mod tests {
         let target = tempfile::tempdir().unwrap();
 
         install_bundled_roms(&store, source.path(), target.path()).unwrap();
-        let (settings, report) = install_bundled_roms(&store, source.path(), target.path()).unwrap();
+        let (settings, report) =
+            install_bundled_roms(&store, source.path(), target.path()).unwrap();
 
         assert!(report.installed.is_empty());
         assert_eq!(report.already_present, ["Bundled.pbp"]);
