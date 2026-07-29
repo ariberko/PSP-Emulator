@@ -86,7 +86,7 @@ pub fn list(source: &Path) -> Vec<BundledRom> {
         .collect();
 
     // Stable order so the UI's count and the install log agree between runs.
-    roms.sort_by(|a, b| a.file_name.to_lowercase().cmp(&b.file_name.to_lowercase()));
+    roms.sort_by_key(|rom| rom.file_name.to_lowercase());
     roms
 }
 
