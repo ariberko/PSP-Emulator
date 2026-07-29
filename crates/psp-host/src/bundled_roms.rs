@@ -209,7 +209,10 @@ mod tests {
             .into_iter()
             .map(|r| r.file_name)
             .collect();
-        assert_eq!(names, ["Bare.elf", "Batman.pbp", "Homebrew.iso", "Squashed.cso"]);
+        assert_eq!(
+            names,
+            ["Bare.elf", "Batman.pbp", "Homebrew.iso", "Squashed.cso"]
+        );
     }
 
     #[test]

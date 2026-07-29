@@ -121,6 +121,11 @@ only want to see the shell working, the testkit writes genuine ISO/CSO/PBP files
 containing nothing copyrighted — see
 [Developing without any game dumps](#developing-without-any-game-dumps).
 
+**The builds are not code-signed.** macOS will refuse to open the app until you
+right-click it and choose *Open*; Windows SmartScreen wants *More info → Run
+anyway*. Signing certificates cost money this project does not have. Each release
+ships `SHA256SUMS.txt` if you would rather check the file yourself.
+
 | | Keyboard | Controller |
 | --- | --- | --- |
 | Change category | ← → | D-pad / left stick |
