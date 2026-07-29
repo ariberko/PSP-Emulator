@@ -121,6 +121,12 @@ jobs:
     #
     # Still only a real tag publishes; a manual dry run stops after building.
     if: ${{ always() && startsWith(github.ref, 'refs/tags/v') }}
+    # Job level, not step level: a step's own `env:` block is not visible to that
+    # step's own `if:`, so the recording step's guard read an always-empty value and
+    # skipped itself on every release, secret set or not.
+    env:
+      BASE44_API_KEY: ${{ secrets.BASE44_API_KEY }}
+      BASE44_APP_ID: ${{ secrets.BASE44_APP_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -172,7 +178,5 @@ jobs:
       - name: Record the release in Base44
         if: ${{ env.BASE44_API_KEY != '' }}
         env:
-          BASE44_API_KEY: ${{ secrets.BASE44_API_KEY }}
-          BASE44_APP_ID: ${{ secrets.BASE44_APP_ID }}
           TAG: ${{ github.ref_name }}
         run: node .github/scripts/record-release.mjs
