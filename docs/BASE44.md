@@ -183,3 +183,17 @@ The CLI needs outbound HTTPS to:
 In a sandboxed environment with an egress allowlist (for example a Claude Code
 web session), both hosts must be allowlisted or install and login fail with
 `Host not in allowlist` / `{"error":"fetch failed"}`.
+
+## A note on the Tauri path bases
+
+`apps/desktop/src-tauri/tauri.conf.json` uses two different bases in its `build`
+block, which is easy to misread as a typo:
+
+| Key | Resolved relative to | Value |
+| --- | --- | --- |
+| `beforeDevCommand`, `beforeBuildCommand` | `src-tauri`'s **parent** (`apps/desktop`) — the CLI's working directory | `../shell` |
+| `frontendDist` | **this file** (`apps/desktop/src-tauri`) | `../../shell/dist` |
+
+Both point at `apps/shell`. They are not interchangeable, and using
+`../../shell` for the before-commands makes `tauri dev` fail to find the
+frontend.
