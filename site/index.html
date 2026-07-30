@@ -29,6 +29,7 @@
         <span>PSP-Emulator</span>
       </a>
       <nav class="nav-links">
+        <a href="#demo">Demo</a>
         <a href="#features">Features</a>
         <a href="#gallery">Screenshots</a>
         <a href="#how">How it works</a>
@@ -72,6 +73,49 @@
             />
           </div>
         </div>
+      </section>
+
+      <!--
+        Placed above the feature list because the cross sliding and the wave moving
+        are the whole pitch, and no amount of prose substitutes for a minute of
+        watching it. No autoplay: the recording is scored, and a page that starts
+        making noise on load is worse than one that waits to be asked.
+      -->
+      <section class="demo" id="demo">
+        <h2>See it running</h2>
+        <p class="section-lede">
+          A minute in the XMB — the cross sliding, the wave behind it, cover art read
+          from each disc, and a submenu opening. Nothing to install first.
+        </p>
+        <div class="demo-frame">
+          <video
+            controls
+            playsinline
+            preload="metadata"
+            poster="./screenshots/desktop-app.png"
+            width="1280"
+            height="720"
+          >
+            <!--
+              H.264 first, since it is what everything with a hardware decoder
+              reaches for. VP9 second rather than as an afterthought: Chromium builds
+              compiled without the proprietary codecs abort the mp4 request outright
+              and would otherwise show a dead player, which is exactly what happened
+              when this was tested.
+            -->
+            <source src="./screenshots/xmb-demo.mp4" type="video/mp4" />
+            <source src="./screenshots/xmb-demo.webm" type="video/webm" />
+            <p>
+              Your browser will not play this video.
+              <a href="./screenshots/xmb-demo.mp4">Download it instead</a>.
+            </p>
+          </video>
+        </div>
+        <p class="demo-note">
+          The titles are generated placeholders, not anyone's games — the app ships no
+          game data. The wallpaper changing colour partway through is the real PSP
+          behaviour: it recolours by system month.
+        </p>
       </section>
 
       <section class="features" id="features">

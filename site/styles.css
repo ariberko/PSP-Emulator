@@ -288,6 +288,48 @@ section {
   height: auto;
 }
 
+/* --- Demo video ----------------------------------------------------------- */
+
+.demo {
+  max-width: var(--max-width);
+  margin: 0 auto;
+  padding: 1rem clamp(1.25rem, 4vw, 2rem) 3rem;
+}
+
+.demo h2 {
+  text-align: center;
+}
+
+/* Capped below the 1280px source: past that it upscales and the text in the
+   recording goes soft. */
+.demo-frame {
+  max-width: 960px;
+  margin: 1.75rem auto 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--edge);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 80px rgba(127, 208, 230, 0.09);
+  /* Reserve the 16:9 box before metadata loads, so the page does not jump when
+     the video appears. */
+  aspect-ratio: 16 / 9;
+  background: #05121b;
+}
+
+.demo-frame video {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.demo-note {
+  max-width: 62ch;
+  margin: 1.1rem auto 0;
+  text-align: center;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--text-faint);
+}
+
 /* --- Features ------------------------------------------------------------- */
 
 .feature-grid {
